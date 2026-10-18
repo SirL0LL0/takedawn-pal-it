@@ -62,7 +62,7 @@ mkdir -p "$STAGE/glyphs"
 "${TAKEDAWN_PYTHON:-python3}" "$REPO/tools/glyphs/build.py" "$REPO/assets/glyphs" \
     "$STAGE/glyphs/bo3_glyph_art.c" "$STAGE/glyphs/bo3_glyph_art.h" > "$B/glyphs.log" 2>&1 \
     || { tail -5 "$B/glyphs.log" >&2; die "the button prompts could not be rendered (TAKEDAWN_PYTHON with resvg_py, or resvg)"; }
-sed -e "s/@VERSION@/$VERSION/g" "$REPO/tools/release/linux/README.txt" > "$STAGE/README.txt"
+sed -e "s/@VERSION@/$VERSION/g" -e "s/@DISC@/$DISC_NAME/g" "$REPO/tools/release/linux/README.txt" > "$STAGE/README.txt"
 HAVE_SETUP=no; QTSRC=""
 if [ "$WITH_SETUP" = 1 ]; then
     # The setup window is built in the container against a Qt that is built
@@ -144,7 +144,7 @@ script="set -e; cd $LDIR
 podman image exists '$SNIPER_SDK_IMAGE' || podman pull '$SNIPER_SDK_IMAGE'
 $sdl_build
 $qt_build
-podman run --rm --security-opt label=disable -e JOBS=${LINUX_JOBS:-8} -e NICE=$NICE \
+podman run --rm --security-opt label=disable -e JOBS=${LINUX_JOBS:-8} -e NICE=$NICE -e BO3_REGION=$BO3_REGION \
     -v \"\$PWD/src\":/src:ro -v \"\$PWD/stage\":/stage:ro -v \"\$PWD/out\":/out -v \"\$PWD/sdl-sniper/$SKEY/prefix\":/sdl:ro $qt_mount \
     '$SNIPER_SDK_IMAGE' sh /src/game/tools/release/linux/in-container.sh
 command -v mksquashfs >/dev/null || { echo 'mksquashfs (squashfs-tools) is needed on the build machine' >&2; exit 1; }

@@ -9,7 +9,11 @@ Takedawn translates one exact `default.xbe`. Besides the North America
 | `pal-retail` | `6f7f6b46…7afa2` | `config/disc/pal-retail.manifest` (786 files) |
 
 Both have the title id `0x4541005B`, so a profile moves between them as it
-does between machines (copy `UDATA`). The PAL disc carries the French,
+does between machines (copy `UDATA`). The PAL build keeps per-user folders
+of its own, `Takedawn PAL` (`%APPDATA%\Takedawn PAL`, `%LOCALAPPDATA%\Takedawn
+PAL\Game` on Windows), so it never mistakes the NTSC-U build's installed data
+for its own and both can be installed side by side; it does not move the
+port's old-name folders (`Burnout3`), which are NTSC-U's. The PAL disc carries the French,
 German and Italian text, speech and films beside the English.
 
 ## Building it
@@ -20,6 +24,11 @@ tools/win/build-mingw.sh -DBO3_REGION=PAL          # or any cmake build with -DB
 ```
 
 with the PAL disc's `default.xbe` at `Burnout 3 Takedown/default.xbe`.
+A release: `BO3_REGION=PAL tools/release/gen.sh`, then
+`BO3_REGION=PAL tools/release/build-windows.sh` (and the other platforms'
+scripts). The setup window names the PAL disc, and the Inno Setup script
+takes `/DRegion=PAL`: "Takedawn PAL", its own folder, uninstall entry and
+`Takedawn-<version>-pal-windows-x64-setup.exe`.
 `regen.sh` then reads `config/pal/` and hands the recompiler
 `src/game/recomp/recomp_manual_pal.c`; the build compiles in the PAL
 manifest and picks the PAL addresses of the C (below).

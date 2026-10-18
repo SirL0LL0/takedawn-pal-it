@@ -110,7 +110,7 @@ export XBOXRECOMP_DIR="\$PWD/../xboxrecomp" BUILD_DIR="\$PWD/../../build" SIGN=0
 export TAKEDAWN_ANDROID_BUILD="${TAKEDAWN_ANDROID_BUILD:-0}"
 $LICENV
 tools/android/fetch-deps.sh > ../../fetch-deps.log 2>&1 || { tail -20 ../../fetch-deps.log; exit 1; }
-tools/android/build-apk.sh -DBO3_RELEASE=ON \${TAKEDAWN_PYTHON:+-DBO3_GLYPHS_PYTHON=\$TAKEDAWN_PYTHON} > ../../build-apk.log 2>&1 || { grep -n "error" ../../build-apk.log | head -20; tail -5 ../../build-apk.log; exit 1; }
+tools/android/build-apk.sh -DBO3_RELEASE=ON -DBO3_REGION=$BO3_REGION \${TAKEDAWN_PYTHON:+-DBO3_GLYPHS_PYTHON=\$TAKEDAWN_PYTHON} > ../../build-apk.log 2>&1 || { grep -n "error" ../../build-apk.log | head -20; tail -5 ../../build-apk.log; exit 1; }
 grep -a -m1 "regen key" ../../build-apk.log || true
 grep -a "versionCode\|with Mesa\|licence files" ../../build-apk.log || true
 TDIR=turnip-a725; [ "\${BO3_ANDROID_TURNIP:-1}" = mesa ] && TDIR=turnip

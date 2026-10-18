@@ -92,7 +92,7 @@ say "configuring (arm64, macOS $MACOS_DEPLOYMENT_TARGET+, Metal only)"
 mkdir -p "$B"
 # Metal is the Mac's backend: the Vulkan one (a MoltenVK test bed) is left
 # out, and with it glslang, SPIRV-Tools and the Vulkan loader.
-cmake -S "$REPO" -B "$B/build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DBO3_RELEASE=ON \
+cmake -S "$REPO" -B "$B/build" -G Ninja -DCMAKE_BUILD_TYPE=Release -DBO3_RELEASE=ON -DBO3_REGION="$BO3_REGION" \
     -DXBOXRECOMP_DIR="$TOOLKIT" -DBO3_BIN_DIR="$B/bin" \
     -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOS_DEPLOYMENT_TARGET" \
     -DXBOXRECOMP_VULKAN=OFF -DSDL2_DIR="$P/lib/cmake/SDL2" -DSDL3_DIR="$P/lib/cmake/SDL3" \
@@ -182,7 +182,7 @@ if [ "$MAKE_DMG" = 1 ]; then
     STAGE="$B/dmg"; rm -rf "$STAGE" "$DMG"; mkdir -p "$STAGE"
     cp -R "$APP" "$STAGE/"
     ln -s /Applications "$STAGE/Applications"
-    sed -e "s/@VERSION@/$VERSION/g" "$REPO/tools/release/macos/READ-ME-FIRST.txt" > "$STAGE/Read me first.txt"
+    sed -e "s/@VERSION@/$VERSION/g" -e "s/@DISC@/$DISC_NAME/g" "$REPO/tools/release/macos/READ-ME-FIRST.txt" > "$STAGE/Read me first.txt"
     hdiutil create -volname "Takedawn $VERSION" -srcfolder "$STAGE" -fs HFS+ -format UDZO \
         -imagekey zlib-level=9 -ov "$DMG" > "$B/hdiutil.log" 2>&1 || die "hdiutil failed ($B/hdiutil.log)"
     cp "$B/version.txt" "$DIST/version-macos.txt"
