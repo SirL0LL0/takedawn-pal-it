@@ -324,7 +324,7 @@ static int all_zero(const uint8_t *p)
 #define MUSIC_HI   BO3_VA(0x00156000u, 0x001562A0u)
 #define RA_DJ      BO3_VA(0x001546BAu, 0x0015495Au)          /* its speech path: the DJ */
 #define RA_FILM_A  BO3_VA(0x0001507Du, 0x0001513Du)          /* the film player */
-#define RA_FILM_B  0x0008731Bu
+#define RA_FILM_B  BO3_VA(0x0008731Bu, 0x0008756Bu)
 #define RA_RWS     BO3_VA(0x0020BD49u, 0x0020C059u)          /* RenderWare's stream player */
 
 int bo3_mixer_classify(const apu_bus_voice *v)

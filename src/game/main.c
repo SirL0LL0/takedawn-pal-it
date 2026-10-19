@@ -461,7 +461,7 @@ static int bo3_voice_tag(uint32_t *out, int max)
         if ((a & 0xFFFu) == 0 && i && a >= 0x04000000u)
             break;
         v = *(const uint32_t *)(mem + a);
-        if (v < 0x00011010u || v >= BO3_VA(0x002CC200u, 0x002CC500u))
+        if (v < 0x00011010u || v >= BO3_VA(0x002CC200u, 0x002CC500u))  /* region: not an address, a code range for a stack scan */
             continue;
         /* call rel32, or an indirect call (FF /2) of 2, 3 or 6 bytes. */
         if (mem[v - 5] == 0xE8 ||
@@ -489,7 +489,7 @@ static void print_guest_stack(void)
     fprintf(stderr, "\n  guest stack return candidates:");
     for (i = 0; i < 256 && shown < 12; i++) {
         uint32_t v = sp[i];
-        if (v >= 0x00011000u && v < 0x00400000u) {
+        if (v >= 0x00011000u && v < 0x00400000u) {  /* region: not an address, a code range for a stack scan */
             fprintf(stderr, " %08X", v);
             shown++;
         }
@@ -1734,8 +1734,13 @@ static const char *s_save_dir = BO3_SAVE_DIR;
 static void host_fatal(const char *what, const char *todo)
 {
 #if defined(__ANDROID__)
+#if defined(BO3_REGION_PAL) && BO3_REGION_PAL
+    const char *log = "takedawn.log in the app's files folder"
+                      " (Android/data/io.github.xenophobentx.takedawn.pal/files)";
+#else
     const char *log = "takedawn.log in the app's files folder"
                       " (Android/data/io.github.xenophobentx.takedawn/files)";
+#endif
 #else
     char log[1200];
 
@@ -1944,7 +1949,11 @@ static int host_main(void)
     xbox_BugReportArm();        /* RECOMP_DEBUG=bug_report=<seconds>[:shot] */
 #endif
 
-    printf("\nStarting game at entry point 0x%08X (%s)...\n", BO3_VA(0x001D2807u, 0x001D2B27u), BO3_REGION_NAME);
+#if defined(BO3_REGION_PAL) && BO3_REGION_PAL
+    printf("\nStarting game at entry point 0x001D2B27 (PAL)...\n");
+#else
+    printf("\nStarting game at entry point 0x001D2807...\n");
+#endif
     RECOMP_ICALL_FEEDBACK_INIT();
     xbe_entry_point();
 
@@ -2903,8 +2912,8 @@ int main(int argc, char **argv)
      * size and SHA-256, the install manifest's) or none: the overlay keeps
      * its own font. */
     {
-        static const xbox_overlay_bitmap_font global_font = { 0x3b9198, 182, 0x3ba958, 256, 256 };
-        static const xbox_overlay_bitmap_font head_font = { 0x3ca978, 47, 0x3cb058, 128, 256 };
+        static const xbox_overlay_bitmap_font global_font = { 0x3b9198, 182, 0x3ba958, 256, 256 };  /* region: not an address, file offsets in default.xbe */
+        static const xbox_overlay_bitmap_font head_font = { 0x3ca978, 47, 0x3cb058, 128, 256 };  /* region: not an address, file offsets in default.xbe */
         /* The PAL default.xbe has both fonts at the same file offsets. */
         xbox_OverlaySetGameFonts(s_xbe_path, 4308992ull,
 #if defined(BO3_REGION_PAL) && BO3_REGION_PAL
@@ -2923,12 +2932,12 @@ int main(int argc, char **argv)
     {
         static const xbox_overlay_sprite art[XBOX_OVERLAY_ART_COUNT] = {
             { 0x2480, 64, 32, 5 },      /* Arrow */
-            { 0x5fe00, 128, 64, 5 },    /* Buttons */
-            { 0x79700, 32, 16, 5 },     /* dpad */
-            { 0x9d200, 16, 16, 1 },     /* grid (DXT1) */
+            { 0x5fe00, 128, 64, 5 },    /* region: not an address, offset in Global.txd; Buttons */
+            { 0x79700, 32, 16, 5 },     /* region: not an address, offset in Global.txd; dpad */
+            { 0x9d200, 16, 16, 1 },     /* region: not an address, offset in Global.txd; grid (DXT1) */
             { 0x8b80, 128, 128, 5 },    /* big_curve */
-            { 0x5f500, 32, 32, 5 },     /* box_curve */
-            { 0x5f980, 32, 32, 5 },     /* box_curveb */
+            { 0x5f500, 32, 32, 5 },     /* region: not an address, offset in Global.txd; box_curve */
+            { 0x5f980, 32, 32, 5 },     /* region: not an address, offset in Global.txd; box_curveb */
             { 0xc80, 16, 16, 5 },       /* 16_curve */
             { 0xe00, 16, 16, 5 },       /* 16_curveb */
         };
@@ -2956,10 +2965,10 @@ int main(int argc, char **argv)
             snprintf(front, sizeof front, "%.*sData/Frontend.txd", slash ? (int)(slash - s_xbe_path + 1) : 0,
                      s_xbe_path);
             xbox_overlay_sprite_file more[XBOX_OVERLAY_ART2_COUNT];
-            more[XBOX_OVERLAY_ART2_VOLUMEBAR] = (xbox_overlay_sprite_file){ txd, 1470080ull, global_sha, 0x155d80, 128, 32, 8 };
-            more[XBOX_OVERLAY_ART2_TICK] = (xbox_overlay_sprite_file){ txd, 1470080ull, global_sha, 0x144b80, 64, 64, 5 };
-            more[XBOX_OVERLAY_ART2_CIRCLE] = (xbox_overlay_sprite_file){ txd, 1470080ull, global_sha, 0x69f00, 32, 32, 5 };
-            more[XBOX_OVERLAY_ART2_PADLOCK] = (xbox_overlay_sprite_file){ front, 7067008ull, front_sha, 0x355c80, 32, 32, 8 };
+            more[XBOX_OVERLAY_ART2_VOLUMEBAR] = (xbox_overlay_sprite_file){ txd, 1470080ull, global_sha, 0x155d80, 128, 32, 8 };  /* region: not an address, offset in the .txd */
+            more[XBOX_OVERLAY_ART2_TICK] = (xbox_overlay_sprite_file){ txd, 1470080ull, global_sha, 0x144b80, 64, 64, 5 };  /* region: not an address, offset in the .txd */
+            more[XBOX_OVERLAY_ART2_CIRCLE] = (xbox_overlay_sprite_file){ txd, 1470080ull, global_sha, 0x69f00, 32, 32, 5 };  /* region: not an address, offset in the .txd */
+            more[XBOX_OVERLAY_ART2_PADLOCK] = (xbox_overlay_sprite_file){ front, 7067008ull, front_sha, 0x355c80, 32, 32, 8 };  /* region: not an address, offset in the .txd */
             xbox_OverlaySetGameArtMore(more);
         }
         xbox_OverlaySetGameArt(txd, 1470080ull,
@@ -2987,9 +2996,9 @@ int main(int argc, char **argv)
         const int dl = slash ? (int)(slash - s_xbe_path + 1) : 0;
         snprintf(fe, sizeof fe, "%.*ssound/Fe.awd", dl, s_xbe_path);
         snprintf(gen, sizeof gen, "%.*ssound/Generic.awd", dl, s_xbe_path);
-        const xbox_overlay_sound vertical = { fe, 3180544ull, fe_sha, 0x430a0, 15912, 32000, -15.5f };
-        const xbox_overlay_sound select = { gen, 1681408ull, gen_sha, 0x175d00, 29376, 22050, -16.8f };
-        const xbox_overlay_sound back = { fe, 3180544ull, fe_sha, 0x7d030, 35584, 32000, -22.8f };
+        const xbox_overlay_sound vertical = { fe, 3180544ull, fe_sha, 0x430a0, 15912, 32000, -15.5f };  /* region: not an address, offset in the .awd */
+        const xbox_overlay_sound select = { gen, 1681408ull, gen_sha, 0x175d00, 29376, 22050, -16.8f };  /* region: not an address, offset in the .awd */
+        const xbox_overlay_sound back = { fe, 3180544ull, fe_sha, 0x7d030, 35584, 32000, -22.8f };  /* region: not an address, offset in the .awd */
         xbox_overlay_sound cues[XBOX_OVERLAY_SND_COUNT];
         cues[XBOX_OVERLAY_SND_MOVE] = vertical;
         cues[XBOX_OVERLAY_SND_CHANGE] = vertical;

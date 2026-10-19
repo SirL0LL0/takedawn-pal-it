@@ -77,6 +77,31 @@ def main():
     json.dump(q, open(os.path.join(ROOT, 'config', 'pal', 'spin_waits.json'), 'w'), indent=2)
     print('spin waits:', len(q['sites']))
 
+    # the C: every BO3_VA / BO3_SUB pair is the map's translation
+    from tools.region import check
+    n = 0
+    for dp, dn, fn in os.walk(os.path.join(ROOT, 'src', 'game')):
+        dn[:] = [d for d in dn if d != 'gen' and not d.startswith('gen.')]
+        for f in sorted(fn):
+            if not f.endswith(('.c', '.h')):
+                continue
+            path = os.path.join(dp, f)
+            rel = os.path.relpath(path, ROOT)
+            code = check.strip_c(open(path, encoding='utf-8', errors='replace').read())
+            for st, en, kind, parts in check._pair_spans(code):
+                if len(parts) != 2 or None in (check._value(parts[0]), check._value(parts[1])):
+                    continue
+                a, b = check._value(parts[0]), check._value(parts[1])
+                t, how = am.translate(a)
+                n += 1
+                if t != b:
+                    problems.append('%s: BO3_%s(%s, %s): the map says %#x (%s)' % (rel, kind, parts[0], parts[1], t, how))
+                elif am.is_code(a) and kind == 'SUB' or (kind == 'VA' and am.a.secs[am.a.index(a)][0] == '.text'):
+                    same, x, y = am.same_code(a, b, 3)
+                    if not same and a not in REVIEWED:
+                        problems.append('%s: BO3_%s(%s, %s): code differs\n    ntsc %s\n    pal  %s' % (rel, kind, parts[0], parts[1], x, y))
+    print('C pairs checked:', n)
+
     for p in problems:
         print('!!', p)
     return 1 if problems else 0
