@@ -4,6 +4,7 @@
     {
       "id": "ntsc-u-retail",
       "name": "Burnout 3: Takedown, North America (NTSC-U) retail",
+      "bo3_region": "NTSC-U",
       "game_dir": "Burnout 3 Takedown",
       "xbe": {
         "file": "default.xbe",
@@ -18,6 +19,7 @@
     {
       "id": "pal-retail",
       "name": "Burnout 3: Takedown, Europe (PAL) retail",
+      "bo3_region": "PAL",
       "game_dir": "Burnout 3 Takedown",
       "xbe": {
         "file": "default.xbe",
