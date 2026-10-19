@@ -128,11 +128,11 @@ rm -f "$log"
 if [ "$STAMPED" = 1 ]; then
     [ "$rkey" = "$GEN_KEY" ] || die "the build's regen key is '$rkey', this checkout's is '$GEN_KEY'"
 fi
-U="$DIST/Takedawn-$VERSION-android-arm64-unsigned.apk"
-scp -q "$H:$D/src/takedawn/out/takedawn-android-arm64-unsigned.apk" "$U"
+U="$DIST/Takedawn-$VERSION$PKG_TAG-android-arm64-unsigned.apk"
+scp -q "$H:$D/src/takedawn/out/takedawn$PKG_TAG-android-arm64-unsigned.apk" "$U"
 [ "$STAMPED" = 0 ] || check_apk_licenses "$U"
 say "unsigned: $U ($(wc -c < "$U" | tr -d ' ') bytes, sha256 $(sha256_of "$U"))"
 say "generated code $GEN_TREE${rkey:+, regen key $rkey}"
 if [ "${1:-}" = "--no-sign" ]; then exit 0; fi
-"$HERE/sign-android.sh" "$U" "$DIST/Takedawn-$VERSION-android-arm64.apk"
-[ "$STAMPED" = 0 ] || check_apk_licenses "$DIST/Takedawn-$VERSION-android-arm64.apk"
+"$HERE/sign-android.sh" "$U" "$DIST/Takedawn-$VERSION$PKG_TAG-android-arm64.apk"
+[ "$STAMPED" = 0 ] || check_apk_licenses "$DIST/Takedawn-$VERSION$PKG_TAG-android-arm64.apk"

@@ -109,7 +109,7 @@ if grep -q "Wunguarded-availability" "$B/build.log"; then
 fi
 
 # ── the bundle ───────────────────────────────────────────────────────
-APP="$B/Takedawn.app"; C="$APP/Contents"
+APP="$B/$APP_TITLE.app"; C="$APP/Contents"
 rm -rf "$APP"; mkdir -p "$C/MacOS" "$C/Frameworks" "$C/Resources"
 cp "$B/bin/takedawn" "$C/MacOS/Takedawn"
 # Real files, not links: sdl2-compat opens SDL3 by the name libSDL3.dylib
@@ -146,7 +146,7 @@ iconutil -c icns "$ICONSET" -o "$C/Resources/Takedawn.icns"
 
 if [ "$HAVE_SETUP" = yes ]; then copy_licenses "$C/Resources/licenses" qt; else copy_licenses "$C/Resources/licenses"; fi
 
-sed -e "s/@VERSION@/$VERSION/g" -e "s/@BUNDLE_ID@/$MACOS_BUNDLE_ID/g" \
+sed -e "s/@VERSION@/$VERSION/g" -e "s/@BUNDLE_ID@/$MACOS_BUNDLE_ID$ID_SUFFIX/g" -e "s/@APP_TITLE@/$APP_TITLE/g" \
     -e "s/@MIN_OS@/$MACOS_DEPLOYMENT_TARGET/g" \
     "$REPO/tools/release/macos/Info.plist.in" > "$C/Info.plist"
 plutil -lint "$C/Info.plist" >/dev/null || die "Info.plist is not valid"
@@ -173,17 +173,17 @@ fi
 codesign -dv "$C/MacOS/Takedawn" 2>&1 | grep -q "^Authority=" && die "takedawn carries an identity's signature"
 
 scratch_run "$B/scratch-home" "$C/MacOS/Takedawn" --version > "$B/version.txt" || die "the bundled takedawn does not start"
-check_version "$B/version.txt" "Takedawn.app"
+check_version "$B/version.txt" "$APP_TITLE.app"
 
 # ── the disk image ───────────────────────────────────────────────────
 if [ "$MAKE_DMG" = 1 ]; then
     mkdir -p "$DIST"
-    DMG="$DIST/Takedawn-$VERSION-macos-arm64.dmg"
+    DMG="$DIST/Takedawn-$VERSION$PKG_TAG-macos-arm64.dmg"
     STAGE="$B/dmg"; rm -rf "$STAGE" "$DMG"; mkdir -p "$STAGE"
     cp -R "$APP" "$STAGE/"
     ln -s /Applications "$STAGE/Applications"
-    sed -e "s/@VERSION@/$VERSION/g" -e "s/@DISC@/$DISC_NAME/g" "$REPO/tools/release/macos/READ-ME-FIRST.txt" > "$STAGE/Read me first.txt"
-    hdiutil create -volname "Takedawn $VERSION" -srcfolder "$STAGE" -fs HFS+ -format UDZO \
+    sed -e "s/@VERSION@/$VERSION/g" -e "s/@DISC@/$DISC_NAME/g" -e "s/@APP_TITLE@/$APP_TITLE/g" "$REPO/tools/release/macos/READ-ME-FIRST.txt" > "$STAGE/Read me first.txt"
+    hdiutil create -volname "$APP_TITLE $VERSION" -srcfolder "$STAGE" -fs HFS+ -format UDZO \
         -imagekey zlib-level=9 -ov "$DMG" > "$B/hdiutil.log" 2>&1 || die "hdiutil failed ($B/hdiutil.log)"
     cp "$B/version.txt" "$DIST/version-macos.txt"
     say "$(basename "$DMG"): $(( $(stat -f %z "$DMG") / 1024 / 1024 )) MB, sha256 $(sha256_of "$DMG")"

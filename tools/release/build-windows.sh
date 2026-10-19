@@ -157,9 +157,8 @@ ssh "$HOST" "powershell -NoProfile -ExecutionPolicy Bypass -File '$WDIR\\remote.
     > "$B/remote.log" 2>&1 || { tail -15 "$B/remote.log" >&2; die "the Windows step failed ($B/remote.log)"; }
 grep -a "^STEP\|^RESULT" "$B/remote.log" | tr -d '\r' | sed 's/^/    /'
 mkdir -p "$DIST"
-TAG=""; [ "$BO3_REGION" = PAL ] && TAG="-pal"
-EXE="$DIST/Takedawn-$VERSION$TAG-windows-x64-setup.exe"
-scp -q "$HOST:$WFWD/out/Takedawn-$VERSION$TAG-windows-x64-setup.exe" "$EXE" || die "could not fetch the setup exe"
+EXE="$DIST/Takedawn-$VERSION$PKG_TAG-windows-x64-setup.exe"
+scp -q "$HOST:$WFWD/out/Takedawn-$VERSION$PKG_TAG-windows-x64-setup.exe" "$EXE" || die "could not fetch the setup exe"
 scp -q "$HOST:$WFWD/version.txt" "$B/version.txt"
 scp -q "$HOST:$WFWD/version-installed.txt" "$B/version-installed.txt"
 [ -n "$disc_arg" ] && scp -q "$HOST:$WFWD/check.txt" "$B/check.txt"
