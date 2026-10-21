@@ -80,13 +80,11 @@ int bo3_pcache_manifest_present(void);          /* pcmanifest.c */
  * setting it takes from the user's file). */
 #include "d3d/nv2a_pcache.h"
 #include "nv2a_texscale.h"
-#include "recomp_cfg.h"
+#include "enhance/recomp_cfg.h"
 
 #if defined(XBOXRECOMP_HAVE_OVERLAY) && !defined(XBOXRECOMP_NO_OVERLAY)
 #include "xbox_shader_build.h"
-#include "nv2a_texscale.h"               /* the scene fills graphics.ui_scale's cache too */
 #include "platform/recomp_save_dir.h"
-#include "enhance/recomp_cfg.h"
 #endif
 
 #if defined(_WIN32)
@@ -582,9 +580,9 @@ static const struct scene {
  * first crash event, 115 and 100 s that no button skips: the title is given
  * the 3 s Criterion logo's file under their names. */
 /* The toolkit's path redirect hook: it is called with the path the title
- * asks for and a place to put the answer; a path it does not answer is
- * left to the title. */
-static void redirect(const char *path, const char **out_path)
+ * asks for and answers with the path to give it instead (NULL: the title
+ * keeps its own). */
+static const char *redirect(const char *path)
 {
     static const char *const from[] = { "\\ovid\\trd_eng.xmv", "\\ovid\\trc_eng.xmv" };
     size_t n = strlen(path), i, k;
@@ -595,11 +593,10 @@ static void redirect(const char *path, const char **out_path)
         for (k = 0; k < m; k++)
             if (tolower((unsigned char)path[n - m + k]) != from[i][k])
                 break;
-        if (k == m) {
-            *out_path = "D:\\ovid\\cri_rw30.xmv";
-            return;
-        }
+        if (k == m)
+            return "D:\\ovid\\cri_rw30.xmv";
     }
+    return NULL;
 }
 
 /* ---- files ----------------------------------------------------------------- */
@@ -883,7 +880,7 @@ static void scene_done(void *ctx, int ok, const char *why)
         if (nv2a_texscale_factor()) {
             struct nv2a_texscale_store_stats ts;
             int idle = nv2a_texscale_flush(60000);
-            nv2a_texscale_store_stats_get(&ts);
+            nv2a_texscale_store_stats(&ts);
             fprintf(stderr, "[SHADERBUILD] ui_scale %ux: %llu textures scaled, %llu already"
                     " in the cache, %.1f MB on disk%s\n", nv2a_texscale_factor(),
                     (unsigned long long)ts.misses, (unsigned long long)ts.hits,

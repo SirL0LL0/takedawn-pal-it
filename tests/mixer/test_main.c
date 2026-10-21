@@ -6,7 +6,9 @@
 #include <string.h>
 #if defined(_WIN32)
 #  include <direct.h>
+#  include <process.h>
 #  define MKDIR(p) _mkdir(p)
+#  define getpid() _getpid()
 #else
 #  include <sys/stat.h>
 #  include <unistd.h>

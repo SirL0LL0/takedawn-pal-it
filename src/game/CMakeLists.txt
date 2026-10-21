@@ -233,6 +233,12 @@ target_include_directories(burnout3 PRIVATE
     ${XBOXRECOMP_DIR}/src/nv2a
     ${XBOXRECOMP_DIR}/src/enhance
     ${XBOXRECOMP_DIR}/src/soundtrack
+    ${XBOXRECOMP_DIR}/src/overlay
+    ${XBOXRECOMP_DIR}/src/video
+    ${XBOXRECOMP_DIR}/src/input
+    ${XBOXRECOMP_DIR}/src/apu
+    ${XBOXRECOMP_DIR}/src/install
+    ${XBOXRECOMP_DIR}/src/platform
     # The template runtime headers, not a local copy: BO3's old copy had
     # drifted from the template by hundreds of lines.
     ${XBOXRECOMP_DIR}/templates/runtime

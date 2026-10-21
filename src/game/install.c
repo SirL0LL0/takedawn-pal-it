@@ -30,7 +30,7 @@
 #include "disc_install.h"
 #include "platform/recomp_save_dir.h"
 #include "platform/recomp_exe_dir.h"
-#include "xr_install.h"
+#include "disc_install.h"
 #if !defined(__ANDROID__)
 #include "d3d/nv2a_pcache.h"
 #endif

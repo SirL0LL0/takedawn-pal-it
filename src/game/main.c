@@ -66,6 +66,10 @@ extern void xbox_InputPanicStop(int wait_ms);
 #include "recomp_icall_feedback.h"
 #include "kernel.h"
 #include "xbox_memory_layout.h"
+#include "nv2a_backend_common.h"        /* the presenter's shape, the HDR sun */
+#include "nv2a_pb_state.h"              /* the flip hook, the stream marks */
+#include "present_cadence.h"            /* xbox_PresentCadenceSteps */
+#include "apu.h"                       /* mcpx_apu_set_voice_tag_hook */
 #include "usb/ohci.h"
 #include "region.h"                   /* BO3_VA: NTSC-U or PAL addresses */
 #include "controls.h"                 /* input.control_scheme (BO-106) */
@@ -91,11 +95,6 @@ extern void xbox_InputPanicStop(int wait_ms);
 #endif
 #ifdef XBOXRECOMP_HAVE_OVERLAY         /* the toolkit's in-game settings overlay */
 #include "xbox_settings.h"
-#endif
-/* The presenter's hooks the mainline toolkit has no counterpart of (the
- * picture's shape, the flip hook, the HDR sun, the frame cadence). */
-#if __has_include("xbox_present_stubs.h")
-#include "xbox_present_stubs.h"
 #endif
 #ifdef RECOMP_ENV_HAVE_ENHANCE_KEYS   /* the toolkit's opt-in enhancements layer */
 #include "enhance.h"
@@ -372,7 +371,12 @@ static void bo3_hdr_sun_init(void)
 /* Set a default for a runtime variable, leaving one the user set alone. The
  * settings overlay's file (settings.toml) is applied to the environment
  * before the defaults, so it outranks them; it is told each default so a
- * "reset" in the overlay goes back to this one. */
+ * "reset" in the overlay goes back to this one.
+ *
+ * The runtime reads the environment once (recomp_env_init) and keeps its
+ * own table, so a default set after that read is not seen by the runtime
+ * unless the table is told too (recomp_env_set). The name is the
+ * RECOMP_* spelling; the id is found by the runtime (recomp_env_id_of). */
 static void env_default(const char *name, const char *value)
 {
 #ifdef XBOXRECOMP_HAVE_OVERLAY
@@ -384,6 +388,13 @@ static void env_default(const char *name, const char *value)
     _putenv_s(name, value);
 #else
     setenv(name, value, 0);
+#endif
+#ifdef RECOMP_ENV_HAVE_ENHANCE_KEYS
+    {
+        recomp_env_id id = recomp_env_id_of(name);
+        if (id != RENV_NONE)
+            recomp_env_set(id, value);
+    }
 #endif
 }
 
@@ -1828,10 +1839,6 @@ static int host_main(void)
     host_install_crash_handler();
 #endif
 
-    if (!recomp_dispatch_init())
-        XR_ERROR( "[BOOT] flat dispatch unavailable; "
-                        "indirect calls will use the binary search\n");
-
     printf("=== Burnout 3: Takedown (Xbox) - Static Recompilation ===\n");
 
     if (!load_xbe(s_xbe_path, &xbe_data, &xbe_size)) {
@@ -2252,7 +2259,7 @@ static void host_enhance_init(void)
         const char *lang = enhance_cfg_string("display.language", NULL);
         env_default("RECOMP_XBOX_LANGUAGE_ENCODING", BO3_LANGUAGE_ENCODING);
         if (lang && *lang)
-            xbox_kernel_set_language(lang);
+            xbox_SetLanguage(lang);
     }
     /* The dashboard's other video setting, the HDTV pack: the kernel
      * reports it (XC_VIDEO) and the title asks for progressive scan when
@@ -3318,6 +3325,12 @@ int main(int argc, char **argv)
     env_default("RECOMP_VBLANK_SYNC", "display");
     env_default("RECOMP_PRESENT_PACING", "sleep");
     env_default("RECOMP_PRESENT_SPIN_LEAD", "8");
+#elif defined(_WIN32)
+    /* Windows: the toolkit's Direct3D 11 backend. Without it the executor
+     * rasterises on the host CPU, which is slow and shows nothing (the
+     * title's video plays on a surface that is never presented). */
+    env_default("RECOMP_PB_BACKEND", "d3d11");
+    env_default("RECOMP_PRESENT_PACING", "sleep");
 #endif
 #else
     env_default("RECOMP_APU_DSP_ACK", "0x825F8810");
