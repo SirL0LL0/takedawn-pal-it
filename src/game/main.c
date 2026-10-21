@@ -2254,6 +2254,18 @@ static void host_enhance_init(void)
         if (lang && *lang)
             xbox_kernel_set_language(lang);
     }
+    /* The dashboard's other video setting, the HDTV pack: the kernel
+     * reports it (XC_VIDEO) and the title asks for progressive scan when
+     * it is on. The picture's shape in the window (present.aspect) is the
+     * presenter's own setting. */
+    {
+        const char *hdtv = enhance_cfg_string("display.hdtv", NULL);
+        const char *aspect = enhance_cfg_string("present.aspect", NULL);
+        if (hdtv && *hdtv)
+            env_default("RECOMP_DISPLAY_HDTV", hdtv);
+        if (aspect && *aspect)
+            env_default("RECOMP_PRESENT_ASPECT", aspect);
+    }
     uw_init();
     enhance_cfg_report_unused();
     fflush(stderr);
