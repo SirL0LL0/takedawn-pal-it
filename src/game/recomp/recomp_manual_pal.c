@@ -29,4 +29,22 @@ void sub_002FADEF(void) { bo3_dsound_voice_done(sub_002FADEF_gen); }   /* NTSC-U
 extern void sub_001F6890_gen(void);
 
 void sub_001F6890(void) { bo3_wave_dict_count(sub_001F6890_gen); }   /* NTSC-U sub_001F65A0 */
+
+/* Pictures between the simulation's steps (../hirefresh.c): the frame's
+ * steps, RenderWare's frame sync, the vehicles' draw and the HUD's time.
+ * As shipped unless graphics.high_refresh is in force. The PAL twins of
+ * the NTSC-U functions (each the same function, of the same size). */
+#include "../hirefresh.h"
+
+extern void sub_000166B0_gen(void);
+extern void sub_001E1900_gen(void);
+extern void sub_001DD5A0_gen(void);
+extern void sub_00030590_gen(void);
+extern void sub_00053790_gen(void);
+
+void sub_000166B0(void) { bo3_update(sub_000166B0_gen); }   /* NTSC-U sub_000165F0 */
+void sub_001E1900(void) { bo3_frame_sync_dirty(sub_001E1900_gen); }   /* NTSC-U sub_001E15E0 */
+void sub_001DD5A0(void) { bo3_frame_get_ltm(sub_001DD5A0_gen); }   /* NTSC-U sub_001DD280 */
+void sub_00030590(void) { bo3_draw_vehicle(sub_00030590_gen); }   /* NTSC-U sub_000303D0 */
+void sub_00053790(void) { bo3_hud_update(sub_00053790_gen); }   /* NTSC-U sub_000535E0 */
 #endif

@@ -3115,6 +3115,13 @@ int main(int argc, char **argv)
      * docs/split-screen.md. */
     recomp_patch_enable("graphics.split_60fps", RENV_GFX_SPLIT_60FPS);
     recomp_patch_enable("audio.split_music", RENV_AUDIO_SPLIT_MUSIC);
+    /* Frames at the display's refresh rate, the simulation at its own 60
+     * steps a second and the pictures between steps blended. At
+     * graphics.high_refresh = true (RECOMP_GFX_HIGH_REFRESH=1) with both
+     * switches above on; off as shipped. Not a guest patch: wraps of the
+     * stepper's frame, RenderWare's frame sync, the vehicles' draw and the
+     * HUD (hirefresh.c); registered here so the overlay shows its row. */
+    recomp_patch_enable("graphics.high_refresh", RENV_GFX_HIGH_REFRESH);
     /* BO-159: a one-player stage starts the title's simulation stepper in its
      * one-step-a-frame mode, so a host below 60 plays the race in slow
      * motion until the first crash camera ends (the title then switches to

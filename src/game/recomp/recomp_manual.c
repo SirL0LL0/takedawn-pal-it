@@ -121,6 +121,23 @@ void sub_002FAAEF(void) { bo3_dsound_voice_done(sub_002FAAEF_gen); }
 extern void sub_001F65A0_gen(void);
 
 void sub_001F65A0(void) { bo3_wave_dict_count(sub_001F65A0_gen); }
+
+/* Pictures between the simulation's steps (../hirefresh.c):
+ * the frame's steps, RenderWare's frame sync, the vehicles' draw and the
+ * HUD's time. As shipped unless graphics.high_refresh is in force. */
+#include "../hirefresh.h"
+
+extern void sub_000165F0_gen(void);
+extern void sub_001E15E0_gen(void);
+extern void sub_001DD280_gen(void);
+extern void sub_000303D0_gen(void);
+extern void sub_000535E0_gen(void);
+
+void sub_000165F0(void) { bo3_update(sub_000165F0_gen); }
+void sub_001E15E0(void) { bo3_frame_sync_dirty(sub_001E15E0_gen); }
+void sub_001DD280(void) { bo3_frame_get_ltm(sub_001DD280_gen); }
+void sub_000303D0(void) { bo3_draw_vehicle(sub_000303D0_gen); }
+void sub_000535E0(void) { bo3_hud_update(sub_000535E0_gen); }
 #else
 #include "../soundtrack.h"
 #endif /* NTSC-U */

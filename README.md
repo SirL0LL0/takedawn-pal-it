@@ -607,6 +607,7 @@ still in the menu. Everything else that changes the console's look
 | Scenery detail | Original, Far | Far, Original on Android. How far away trees and other roadside objects keep their detailed models. On Original the pines turn into flat cut-outs at 250 m; on Far they stay detailed as far as they are drawn |
 | 60 fps crash cameras | On, Off | Off. The console drops to 30 in crash and takedown cameras. Needs a fast machine |
 | 60 fps split screen | On, Off | Off. Two-player races at 60 instead of 30. Needs a fast machine; leave it off on a handheld |
+| High refresh rate | On, Off | Off. Draws at the display's refresh rate (120, 144 Hz and faster); the game itself keeps its 60 steps a second, and cars and the camera move smoothly between them. Needs both 60 fps switches above on. Needs a fast machine. [Details](docs/high-refresh.md) |
 | Potato mode | On, Off | Off. A machine under 60 fps runs the start of a race in slow motion until the first crash. On skips frames to keep real time. Applies from the next race. [Details](docs/race-clock.md) |
 | Build shaders now | action | See [the shader pre-build](#the-shader-pre-build). Not on Android |
 
@@ -791,7 +792,11 @@ audio.
 
 **Can it run above 60 frames per second?**
 
-No. The game steps its simulation once per frame, so 60 is its own speed.
+The game steps its simulation once per frame, so 60 is its own speed. With
+High refresh rate on (Graphics page) it draws at the display's refresh rate
+instead, while the game itself keeps its 60 steps a second: cars and the
+camera are drawn between the steps. Particles, skid marks and crash damage
+still move 60 times a second. [Details](docs/high-refresh.md).
 
 **Can I use my old Xbox save?**
 
@@ -1024,6 +1029,7 @@ Further documents:
 | Driving controls: Xbox and PS2 layout | [docs/controls.md](docs/controls.md) |
 | Draw distance and vehicle detail | [docs/draw-distance.md](docs/draw-distance.md) |
 | Potato mode: real-time race start on machines below 60 fps | [docs/race-clock.md](docs/race-clock.md) |
+| High refresh rate: drawing above 60 fps | [docs/high-refresh.md](docs/high-refresh.md) |
 | Button prompt artwork | [assets/glyphs/README.md](assets/glyphs/README.md) |
 | How the parts fit together | [docs/architecture.md](docs/architecture.md) |
 | The PAL (Europe) build | [docs/pal.md](docs/pal.md) |
