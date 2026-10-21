@@ -27,19 +27,28 @@
 >
 > No game data is included or distributed: no disc images, no textures,
 > models, sound, music or films, and no shader cache made from them. To play
-> you need your own, legally obtained disc of the North America (NTSC-U)
-> retail release for the original Xbox. Takedawn checks a copy of it and takes
-> the game data from there. Please do not ask for game files or disc images,
-> and do not share them. See the full [legal notice](#legal-notice).
+> you need your own, legally obtained disc of the retail release for the
+> original Xbox: the North America (NTSC-U) one for the upstream, the
+> European (PAL) one for this checkout (the note below). Takedawn checks a
+> copy of it and takes the game data from there. Please do not ask for game
+> files or disc images, and do not share them. See the full
+> [legal notice](#legal-notice).
 
 > [!NOTE]
-> **This checkout: the European disc, in Italian.** The upstream Takedawn
-> translates the North America (NTSC-U) disc. This one translates the
-> European (PAL) disc (`BO3_REGION=PAL`, [docs/pal.md](docs/pal.md)) and
+> **This checkout: the European (PAL) disc, in Italian.** The upstream
+> Takedawn translates the North America (NTSC-U) disc. This one translates
+> the European (PAL) disc (`BO3_REGION=PAL`, [docs/pal.md](docs/pal.md)) and
 > plays it in Italian, the language that disc carries
 > ([docs/language.md](docs/language.md)). The game data is still yours: your
-> own European disc is what it reads. The toolkit that answers the language
-> setting is the `takedawn` branch of
+> own European disc is what it reads.
+>
+> The language is the dashboard's setting, and it is a setting:
+> `english`, `french`, `german`, `italian`, `spanish`, `japanese`, `korean`,
+> `chinese_traditional`, `chinese_simplified`, `portuguese`, `dutch`,
+> `swedish`. The European disc carries French, German and Italian (and no
+> English: asking for it there falls back to the French one).
+>
+> The toolkit that answers the language setting is the `takedawn` branch of
 > [SirL0LL0/xboxrecomp](https://github.com/SirL0LL0/xboxrecomp), a fork of
 > [xenophobentx/xboxrecomp](https://github.com/xenophobentx/xboxrecomp) with
 > the language added on top of `takedawn-0.2.0` (the tag
