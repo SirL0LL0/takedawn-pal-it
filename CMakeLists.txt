@@ -46,6 +46,18 @@ if(BO3_RELEASE)
     add_compile_definitions(BO3_RELEASE_BUILD=1)
 endif()
 
+# The disc the build is for (src/game/region.h): NTSC-U, the North America
+# retail release, or PAL, the European one. Its default.xbe is translated by
+# regen.sh with BO3_REGION=PAL, which takes config/pal/ and
+# recomp/recomp_manual_pal.c; the C picks the PAL addresses.
+set(BO3_REGION "NTSC-U" CACHE STRING "Disc region: NTSC-U or PAL")
+set_property(CACHE BO3_REGION PROPERTY STRINGS NTSC-U PAL)
+if(BO3_REGION STREQUAL "PAL")
+    add_compile_definitions(BO3_REGION_PAL=1)
+elseif(NOT BO3_REGION STREQUAL "NTSC-U")
+    message(FATAL_ERROR "BO3_REGION must be NTSC-U or PAL, not '${BO3_REGION}'")
+endif()
+
 option(BO3_ICALL_FEEDBACK "Record indirect-branch targets for codegen feedback" OFF)
 if(BO3_ICALL_FEEDBACK)
     add_compile_definitions(RECOMP_ICALL_FEEDBACK)
@@ -96,13 +108,25 @@ add_subdirectory(${XBOXRECOMP_DIR} ${CMAKE_BINARY_DIR}/xboxrecomp)
 
 add_subdirectory(src/game)
 
-# The PS2 driving layout's unit test (src/game/controls.h, BO-106).
+# The PS2 driving layout's unit test (src/game/controls.h, BO-106). The
+# test needs the toolkit's face-layout and dead-zone settings, which the
+# mainline toolkit does not have.
 if(NOT ANDROID)
-    add_subdirectory(tests/controls)
-    # Which sound goes to which mixer bus (src/game/mixer.c, BO-114).
-    add_subdirectory(tests/mixer)
-    # The GP effects image as wired for the APU's model (BO-119).
-    add_subdirectory(tests/gp)
+    if(EXISTS "${XBOXRECOMP_DIR}/src/input/xbox_input_takedawn.h")
+        add_subdirectory(tests/controls)
+    endif()
+    # Which sound goes to which mixer bus (src/game/mixer.c, BO-114). The
+    # test needs the title's own mixer (the toolkit's apu_bus.c), which the
+    # mainline toolkit does not have.
+    if(EXISTS "${XBOXRECOMP_DIR}/src/apu/apu_bus.c")
+        add_subdirectory(tests/mixer)
+    endif()
+    # The GP effects image as wired for the APU's model (BO-119). It needs the
+    # APU's GP model (apu_gp.c, apu_dsp56k.c), which the mainline toolkit does
+    # not have; without it there is nothing to test.
+    if(EXISTS "${XBOXRECOMP_DIR}/src/apu/apu_gp.c")
+        add_subdirectory(tests/gp)
+    endif()
     # When a start-up failure may show a message box (src/game/fatal.c).
     add_subdirectory(tests/fatal)
 endif()

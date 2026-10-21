@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include "controls.h"
 #include "input_map.h"
+#include "xbox_input_takedawn.h"
 
 static int g_checks, g_fail;
 #define CHECK(c, ...) do { g_checks++; if (!(c)) { g_fail++; \

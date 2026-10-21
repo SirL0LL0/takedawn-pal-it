@@ -46,6 +46,7 @@
  * not written by this, and what the player wins in a race opened by it is
  * kept or thrown away when the cheat goes off.
  */
+#include "region.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -54,7 +55,7 @@
 
 #include "platform/recomp_patch.h"
 #include "recomp_types.h"
-#ifdef XBOXRECOMP_HAVE_OVERLAY
+#if defined(XBOXRECOMP_HAVE_OVERLAY) && !defined(XBOXRECOMP_NO_OVERLAY)
 #include "xbox_settings.h"
 #endif
 
@@ -63,9 +64,9 @@ extern ptrdiff_t g_xbox_mem_offset;
 #define UA_P(va)   ((uint8_t *)((uintptr_t)g_xbox_mem_offset + (uint32_t)(va)))
 #define UA_M32(va) (*(uint32_t *)UA_P(va))
 
-#define UA_BLOCK      0x0044CFC8u     /* the arrays and their counts */
-#define UA_BLOCK_END  0x0044D240u
-#define UA_ANNOUNCED  0x0044D4B8u     /* the copy of UA_BLOCK .. + 0x162 */
+#define UA_BLOCK      BO3_VA(0x0044CFC8u, 0x0044D2E8u)     /* the arrays and their counts */
+#define UA_BLOCK_END  BO3_VA(0x0044D240u, 0x0044D560u)
+#define UA_ANNOUNCED  BO3_VA(0x0044D4B8u, 0x0044D7D8u)     /* the copy of UA_BLOCK .. + 0x162 */
 #define UA_ANN_SIZE   0x162u
 
 static volatile int s_on;
@@ -83,18 +84,18 @@ static void ua_keep_real(void)
 /* What sub_0001BFD0 writes outside the profile. */
 static void ua_open_all(void)
 {
-    memset(UA_P(0x0044D01Fu), 1, 0x49);
-    UA_M32(0x0044D15Cu) = 0x49;
-    memset(UA_P(0x0044D068u), 1, 100);
-    UA_M32(0x0044D160u) = 100;
-    memset(UA_P(0x0044CFC8u), 1, 0x43);
-    UA_M32(0x0044D154u) = 0x43;
-    UA_M32(0x0044D23Cu) = 10;
-    UA_M32(0x0044D158u) = 0x14;
-    UA_M32(0x0044D148u) = 0x14;
-    memset(UA_P(0x0044D00Bu), 1, 0x14);
-    memset(UA_P(0x0044D0CCu), 1, 0x24);
-    UA_M32(0x0044D164u) = 0x24;
+    memset(UA_P(BO3_VA(0x0044D01Fu, 0x0044D33Fu)), 1, 0x49);
+    UA_M32(BO3_VA(0x0044D15Cu, 0x0044D47Cu)) = 0x49;
+    memset(UA_P(BO3_VA(0x0044D068u, 0x0044D388u)), 1, 100);
+    UA_M32(BO3_VA(0x0044D160u, 0x0044D480u)) = 100;
+    memset(UA_P(BO3_VA(0x0044CFC8u, 0x0044D2E8u)), 1, 0x43);
+    UA_M32(BO3_VA(0x0044D154u, 0x0044D474u)) = 0x43;
+    UA_M32(BO3_VA(0x0044D23Cu, 0x0044D55Cu)) = 10;
+    UA_M32(BO3_VA(0x0044D158u, 0x0044D478u)) = 0x14;
+    UA_M32(BO3_VA(0x0044D148u, 0x0044D468u)) = 0x14;
+    memset(UA_P(BO3_VA(0x0044D00Bu, 0x0044D32Bu)), 1, 0x14);
+    memset(UA_P(BO3_VA(0x0044D0CCu, 0x0044D3ECu)), 1, 0x24);
+    UA_M32(BO3_VA(0x0044D164u, 0x0044D484u)) = 0x24;
     memcpy(UA_P(UA_ANNOUNCED), UA_P(UA_BLOCK), UA_ANN_SIZE);
 }
 
@@ -127,7 +128,7 @@ static void ua_set(int on)
     }
 }
 
-#ifdef XBOXRECOMP_HAVE_OVERLAY
+#if defined(XBOXRECOMP_HAVE_OVERLAY) && !defined(XBOXRECOMP_NO_OVERLAY)
 static const xbox_cheat k_cheats[] = {
     { "Unlock everything",
       "Opens every car, race and crash junction for this session. Your save is not changed. "
@@ -140,7 +141,7 @@ static const xbox_cheat k_cheats[] = {
 void bo3_unlock_all_start(void)
 {
     recomp_patch_on_mark("ua_eval", ua_eval);
-#ifdef XBOXRECOMP_HAVE_OVERLAY
+#if defined(XBOXRECOMP_HAVE_OVERLAY) && !defined(XBOXRECOMP_NO_OVERLAY)
     xbox_OverlaySetCheats(k_cheats, (int)(sizeof k_cheats / sizeof k_cheats[0]));
 #endif
     /* A scripted run asks for it from the start: BO3_UNLOCK_ALL=1 (no save

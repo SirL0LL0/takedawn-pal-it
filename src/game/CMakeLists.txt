@@ -9,6 +9,16 @@ file(GLOB RECOMP_GEN_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/recomp/gen/recomp_*.c"
 )
 
+# The wrapped functions. recomp_manual.c holds the infrastructure every
+# build needs (the manual lookup, the indirect-call logs, the unimplemented
+# instruction's report) and, in the NTSC-U build, the five functions the
+# lifter got wrong. The PAL build has those five at its own addresses, in
+# recomp_manual_pal.c.
+list(APPEND RECOMP_GEN_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/recomp/recomp_manual.c")
+if(BO3_REGION STREQUAL "PAL")
+    list(APPEND RECOMP_GEN_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/recomp/recomp_manual_pal.c")
+endif()
+
 if(ANDROID)
     # Android: the game is libmain.so, which SDL's activity loads and whose
     # SDL_main it calls (docs/android.md). No shader pre-build: that one
@@ -30,8 +40,7 @@ if(ANDROID)
     mixer.c
     gp_image.c
     pcmanifest.c
-        recomp/recomp_manual.c
-        ${RECOMP_GEN_SOURCES}
+            ${RECOMP_GEN_SOURCES}
     )
     set_target_properties(burnout3 PROPERTIES OUTPUT_NAME main)
     # Calls and data inside the library bind to it at link time: 24 000
@@ -59,7 +68,6 @@ add_executable(burnout3
     mixer.c
     gp_image.c
     pcmanifest.c
-    recomp/recomp_manual.c
     ${RECOMP_GEN_SOURCES}
 )
 endif()
@@ -191,8 +199,13 @@ if(WIN32)
     endif()
     target_link_libraries(burnout3 PRIVATE
         xbox_kernel xbox_d3d8 xbox_dsound xbox_input xbox_usb xbox_video xbox_apu
-        xbox_install xbox_soundtrack kernel32 user32 gdi32 dbghelp
+        xbox_soundtrack kernel32 user32 gdi32 dbghelp
     )
+    # The installer's report (xr_install.h) is in the toolkit's environment
+    # library, which the runtime libraries already carry.
+    if(TARGET xbox_install)
+        target_link_libraries(burnout3 PRIVATE xbox_install)
+    endif()
     if(TARGET xbox_enhance)
         target_link_libraries(burnout3 PRIVATE xbox_enhance)
     endif()
@@ -215,6 +228,11 @@ target_include_directories(burnout3 PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/recomp/gen
     ${XBOXRECOMP_DIR}/src
     ${XBOXRECOMP_DIR}/src/kernel
+    ${XBOXRECOMP_DIR}/src/game
+    ${XBOXRECOMP_DIR}/src/d3d
+    ${XBOXRECOMP_DIR}/src/nv2a
+    ${XBOXRECOMP_DIR}/src/enhance
+    ${XBOXRECOMP_DIR}/src/soundtrack
     # The template runtime headers, not a local copy: BO3's old copy had
     # drifted from the template by hundreds of lines.
     ${XBOXRECOMP_DIR}/templates/runtime
@@ -238,6 +256,9 @@ else()
         # log goes to the console that started it.
         target_link_options(burnout3 PRIVATE -Wl,--subsystem,console)
         target_compile_definitions(burnout3 PRIVATE _CRT_SECURE_NO_WARNINGS)
+        # The title's own threads (the mixer's wave table, the HUD dump):
+        # llvm-mingw's winpthreads.
+        target_link_libraries(burnout3 PRIVATE pthread)
     endif()
     # Clang: the generated chunks warn by the thousand. The executable stays
     # unstripped so the fault handler's dladdr names sub_XXXXXXXX.

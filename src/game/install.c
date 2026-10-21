@@ -30,6 +30,7 @@
 #include "disc_install.h"
 #include "platform/recomp_save_dir.h"
 #include "platform/recomp_exe_dir.h"
+#include "xr_install.h"
 #if !defined(__ANDROID__)
 #include "d3d/nv2a_pcache.h"
 #endif
@@ -58,7 +59,11 @@ static const xr_manifest_file k_files[] = {
 static const xr_manifest k_manifest = {
     BO3_MANIFEST_ID,
     "Burnout 3: Takedown",
+#if defined(BO3_REGION_PAL) && BO3_REGION_PAL
+    "Europe (PAL) retail",
+#else
     "North America (NTSC-U) retail",
+#endif
     BO3_MANIFEST_TITLE_ID,
     "default.xbe",
     k_files,
@@ -143,6 +148,12 @@ static int dir_move(int i, char *from, unsigned from_n, char *to, unsigned to_n,
         { RECOMP_DIR_CACHE, "burnout3", "shader cache" },
 #endif
     };
+#if defined(BO3_REGION_PAL) && BO3_REGION_PAL
+    /* The PAL program keeps folders of its own; the old name's are the
+     * NTSC-U build's, so they are left alone. */
+    (void)k; (void)from; (void)from_n; (void)to; (void)to_n; (void)what; (void)kind;
+    return 0;
+#endif
     if (i < 0 || i >= (int)(sizeof k / sizeof k[0]))
         return 0;
     *what = k[i].what;

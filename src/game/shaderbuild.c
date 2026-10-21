@@ -68,14 +68,21 @@ int bo3_pcache_manifest_present(void);          /* pcmanifest.c */
 #include "kernel.h"                     /* xbox_PathRedirectHook */
 #include "xbox_autoplay.h"
 #include "xbox_crash.h"                 /* g_xbox_flip_count */
-#include "d3d/nv2a_pcache.h"
 #include "nv2a_backend_common.h"        /* nv2a_host_opts */
 #include "platform/recomp_env.h"
 #include "platform/recomp_exe_dir.h"
+#include "platform/recomp_save_dir.h"      /* recomp_user_dir */
 #include "platform/host_time.h"         /* xbox_TimeWarpEnable: a scene does not wait */
 #include "input/input_backend.h"        /* xbox_InputSetBlocked */
 #include "usb/usb_gamepad.h"            /* usb_gamepad_live_taken */
-#ifdef XBOXRECOMP_HAVE_OVERLAY
+
+/* The shader pre-build's texture cache and the config reader (the ui_scale
+ * setting it takes from the user's file). */
+#include "d3d/nv2a_pcache.h"
+#include "nv2a_texscale.h"
+#include "recomp_cfg.h"
+
+#if defined(XBOXRECOMP_HAVE_OVERLAY) && !defined(XBOXRECOMP_NO_OVERLAY)
 #include "xbox_shader_build.h"
 #include "nv2a_texscale.h"               /* the scene fills graphics.ui_scale's cache too */
 #include "platform/recomp_save_dir.h"
@@ -393,12 +400,14 @@ static int script_build(const char *path)
             continue;
         if (!strcmp(a, "boot") || !strcmp(a, "bootmain")) {
             /* bootmain stops on the main menu, before Single Event is chosen */
-            const xap_step *q, *e = k_boot;
-            while (e->op != XAP_END)
-                e++;
+            const xap_step *q;
+            const xap_step *e = k_boot;
+            int e_idx = 0;
+            while (e[e_idx].op != XAP_END)
+                e_idx++;
             if (!strcmp(a, "bootmain"))
-                e -= 2;
-            for (q = k_boot; q < e; q++)
+                e_idx -= 2;
+            for (q = k_boot; q < e + e_idx; q++)
                 sw_add(q->op, q->s, q->s2, q->n);
         } else if (!strcmp(a, "press") && got >= 3) {
             sw_press(b, atoi(c));
@@ -572,7 +581,10 @@ static const struct scene {
 /* The training films a new profile is shown before its first race and its
  * first crash event, 115 and 100 s that no button skips: the title is given
  * the 3 s Criterion logo's file under their names. */
-static const char *redirect(const char *path)
+/* The toolkit's path redirect hook: it is called with the path the title
+ * asks for and a place to put the answer; a path it does not answer is
+ * left to the title. */
+static void redirect(const char *path, const char **out_path)
 {
     static const char *const from[] = { "\\ovid\\trd_eng.xmv", "\\ovid\\trc_eng.xmv" };
     size_t n = strlen(path), i, k;
@@ -583,10 +595,11 @@ static const char *redirect(const char *path)
         for (k = 0; k < m; k++)
             if (tolower((unsigned char)path[n - m + k]) != from[i][k])
                 break;
-        if (k == m)
-            return "D:\\ovid\\cri_rw30.xmv";
+        if (k == m) {
+            *out_path = "D:\\ovid\\cri_rw30.xmv";
+            return;
+        }
     }
-    return NULL;
 }
 
 /* ---- files ----------------------------------------------------------------- */
@@ -870,7 +883,7 @@ static void scene_done(void *ctx, int ok, const char *why)
         if (nv2a_texscale_factor()) {
             struct nv2a_texscale_store_stats ts;
             int idle = nv2a_texscale_flush(60000);
-            nv2a_texscale_store_stats(&ts);
+            nv2a_texscale_store_stats_get(&ts);
             fprintf(stderr, "[SHADERBUILD] ui_scale %ux: %llu textures scaled, %llu already"
                     " in the cache, %.1f MB on disk%s\n", nv2a_texscale_factor(),
                     (unsigned long long)ts.misses, (unsigned long long)ts.hits,
@@ -1369,7 +1382,7 @@ int bo3_shaderbuild_main(int argc, char **argv, const char *xbe_path)
 
 /* ---- the running game: the overlay's action and the first start's offer ------- */
 
-#ifdef XBOXRECOMP_HAVE_OVERLAY
+#if defined(XBOXRECOMP_HAVE_OVERLAY) && !defined(XBOXRECOMP_NO_OVERLAY)
 
 static pthread_mutex_t s_host_mu = PTHREAD_MUTEX_INITIALIZER;
 static int   s_host_state;              /* xbox_shader_build_state */
