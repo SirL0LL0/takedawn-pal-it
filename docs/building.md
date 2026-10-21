@@ -47,6 +47,19 @@ git clone -b takedawn https://github.com/xenophobentx/xboxrecomp
 git -C xboxrecomp checkout takedawn-0.2.0   # the toolkit of release 0.2.0
 ```
 
+The dashboard's language (`display.language`: Italian for the European disc)
+needs the toolkit of [SirL0LL0/xboxrecomp](https://github.com/SirL0LL0/xboxrecomp),
+a fork of it with the language added on top of `takedawn-0.2.0`. The tag
+`takedawn-0.2.0-it` is that commit:
+
+```sh
+git clone -b takedawn https://github.com/SirL0LL0/xboxrecomp.git
+git -C xboxrecomp checkout takedawn-0.2.0-it
+```
+
+Without it the game still runs, in the language the disc's own default is.
+[language.md](language.md) says how the setting is read.
+
 ## Translate and build
 
 ```sh

@@ -36,6 +36,8 @@ aspect = "4:3"            # hor+ is not implemented; widescreen above is the
 #         "dutch", "swedish"
 # A language the disc does not carry falls back to the game's own default
 # (the PAL disc has no English, so "english" gives French there).
+# This build asks for Italian, the language of the European disc; on the
+# North America disc it is one of the languages that disc carries too.
 # Unset: the language the dashboard would have set (English).
 language = "italian"
 

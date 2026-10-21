@@ -19,11 +19,17 @@ looked up without regard to case on every host, so it changes nothing.
 ## What the PAL game sees
 
 The kernel answers as the North American console it was written for: the
-EEPROM's region North America and language English (`XC_LANGUAGE` 1,
-toolkit `src/kernel/kernel_xbox.c`) and an NTSC-M, 60 Hz AV pack
-(`src/kernel/kernel_hal.c`). So the PAL game runs its 60 Hz path, in
-English, for now. Reporting a PAL standard or another language is the
-toolkit's to add.
+EEPROM's region North America and an NTSC-M, 60 Hz AV pack
+(`src/kernel/kernel_hal.c`). So the PAL game runs its 60 Hz path.
+
+The language is the dashboard's setting, and it is not fixed to English
+anymore: `display.language` names it and the EEPROM carries the number the
+game's own table knows, so the European disc can be played in Italian
+([language.md](language.md)). The European disc carries French, German and
+Italian, and no English: asking for `english` on it falls back to the French
+one, because the file the game would open is not there.
+
+Reporting a PAL standard (50 Hz, PAL video) is still the toolkit's to add.
 
 ## Building it
 
