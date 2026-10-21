@@ -32,6 +32,35 @@
 > the game data from there. Please do not ask for game files or disc images,
 > and do not share them. See the full [legal notice](#legal-notice).
 
+> [!NOTE]
+> **This checkout: the European disc, in Italian.** The upstream Takedawn
+> translates the North America (NTSC-U) disc. This one translates the
+> European (PAL) disc (`BO3_REGION=PAL`, [docs/pal.md](docs/pal.md)) and
+> plays it in Italian, the language that disc carries
+> ([docs/language.md](docs/language.md)). The game data is still yours: your
+> own European disc is what it reads. The toolkit that answers the language
+> setting is the `takedawn` branch of
+> [SirL0LL0/xboxrecomp](https://github.com/SirL0LL0/xboxrecomp), a fork of
+> [xenophobentx/xboxrecomp](https://github.com/xenophobentx/xboxrecomp) with
+> the language added on top of `takedawn-0.2.0` (the tag
+> `takedawn-0.2.0-it`).
+>
+> To build it:
+>
+> ```sh
+> git clone -b takedawn https://github.com/SirL0LL0/xboxrecomp.git
+> BO3_REGION=PAL XBOXRECOMP_DIR=../xboxrecomp ./regen.sh --disasm
+> cmake -S . -B build/win -G Ninja -DCMAKE_BUILD_TYPE=Release \
+>       -DBO3_REGION=PAL -DXBOXRECOMP_DIR=../xboxrecomp
+> cmake --build build/win
+> ```
+>
+> On Windows, `tools\win\regen.bat` and `tools\win\build.bat` do the same
+> without a bash shell. Everything else is the upstream's work, by
+> [xenophobentx](https://github.com/xenophobentx) and the
+> [xboxrecomp](https://github.com/sp00nznet/xboxrecomp) people; see
+> [Credits](#credits).
+
 **TL;DR**
 
 - This is a port, not a remaster. It runs the original 2004 game with its
