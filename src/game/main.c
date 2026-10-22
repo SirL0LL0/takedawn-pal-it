@@ -1845,9 +1845,9 @@ static int host_main(void)
         char what[1200];
 
         snprintf(what, sizeof what, "The game's program file could not be read:\n%s", s_xbe_path);
-        host_fatal(what, "The game's data is missing or damaged. Install it again from your own"
-                         " Burnout 3: Takedown disc (the setup program, or --install), and"
-                         " check that the folder can be read.");
+        host_fatal(what, "I dati del gioco mancano o sono danneggiati. Installali di nuovo dal tuo"
+                         " disco di Burnout 3: Takedown (il programma di installazione, o --install), e"
+                         " controlla che la cartella si possa leggere.");
         return 1;
     }
     printf("XBE loaded: %zu bytes\n", xbe_size);
@@ -1857,11 +1857,11 @@ static int host_main(void)
         XR_ERROR( "Xbox memory layout init failed "
                         "(required VA range unavailable?)\n");
         free(xbe_data);
-        host_fatal("The memory the game needs could not be reserved. It runs as a copy of the"
-                   " Xbox and needs a fixed range of address space to itself.",
-                   "Close other programs, and any other copy of the game, and start it again."
-                   " Restarting the computer usually frees the range. If it keeps happening,"
-                   " send the log with a bug report.");
+        host_fatal("La memoria di cui il gioco ha bisogno non ha potuto essere riservata. Gira come una copia della"
+                   " Xbox e ha bisogno di un intervallo fisso di spazio di indirizzamento tutto suo.",
+                   "Chiudi gli altri programmi e l'eventuale altra copia del gioco, e riavvialo."
+                   " Riavviare il computer di solito libera l'intervallo. Se continua a succedere,"
+                   " manda il log con un report di bug.");
         return 1;
     }
     g_xbox_mem_offset = xbox_GetMemoryOffset();
