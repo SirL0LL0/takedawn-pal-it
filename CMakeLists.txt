@@ -112,7 +112,8 @@ add_subdirectory(src/game)
 # test needs the toolkit's face-layout and dead-zone settings, which the
 # mainline toolkit does not have.
 if(NOT ANDROID)
-    if(EXISTS "${XBOXRECOMP_DIR}/src/input/xbox_input_takedawn.h")
+    if(EXISTS "${XBOXRECOMP_DIR}/src/input/xbox_input_takedawn.h"
+       OR EXISTS "${XBOXRECOMP_DIR}/src/input/input_map.h")
         add_subdirectory(tests/controls)
     endif()
     # Which sound goes to which mixer bus (src/game/mixer.c, BO-114). The

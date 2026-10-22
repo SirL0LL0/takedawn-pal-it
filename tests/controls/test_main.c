@@ -5,8 +5,14 @@
  */
 #include <stdio.h>
 #include "controls.h"
-#include "input_map.h"
+/* The toolkit's host map: the mainline toolkit has it in
+ * xbox_input_takedawn.h, the takedawn one in input_map.h (the same
+ * functions, the same names). */
+#if __has_include("xbox_input_takedawn.h")
 #include "xbox_input_takedawn.h"
+#else
+#include "input_map.h"
+#endif
 
 static int g_checks, g_fail;
 #define CHECK(c, ...) do { g_checks++; if (!(c)) { g_fail++; \
@@ -481,6 +487,75 @@ static void test_esc(void)
     }
 }
 
+/* The gate: is the title taking driving input for a player? Each player's
+ * own event, so one still racing keeps the layout when the other one
+ * finishes. */
+static void test_gate(void)
+{
+    const unsigned vt_game = 0x003A9ACCu;    /* any value: the rule is what counts */
+    struct bo3_ctl_state s;
+
+    memset(&s, 0, sizeof s);
+    s.module = 0x004D4328u;
+    s.module_vt = vt_game;
+    s.paused_by = -1;
+
+    /* In play: driving. */
+    s.phase = 2;
+    CHECK(bo3_ctl_driving(&s, vt_game) == 1, "in play: driving");
+
+    /* Counting down: driving (the boost start is on the accelerator). */
+    s.phase = 1;
+    s.countdown = 0x40A00000u;               /* 5.0 s */
+    CHECK(bo3_ctl_driving(&s, vt_game) == 1, "counting down: driving");
+    s.countdown = 0xBF800000u;               /* -1.0: no countdown */
+    CHECK(bo3_ctl_driving(&s, vt_game) == 0, "counting down, no countdown: not driving");
+    s.countdown = 0;
+    CHECK(bo3_ctl_driving(&s, vt_game) == 0, "counting down, a zero length: not driving");
+    s.countdown = 0x40A00000u;
+
+    /* Finished: not driving. */
+    s.phase = 3;
+    CHECK(bo3_ctl_driving(&s, vt_game) == 0, "finished: not driving");
+    s.phase = 2;
+
+    /* The results or the captions of the player: not driving. */
+    s.results = 1;
+    CHECK(bo3_ctl_driving(&s, vt_game) == 0, "the results are up: not driving");
+    s.results = 0;
+    s.intro = 1;
+    CHECK(bo3_ctl_driving(&s, vt_game) == 0, "the captions are up: not driving");
+    s.intro = 0;
+
+    /* Paused, the module leaving, the front end: not driving. */
+    s.paused_by = 0;
+    CHECK(bo3_ctl_driving(&s, vt_game) == 0, "paused: not driving");
+    s.paused_by = -1;
+    s.module_step = 6;
+    CHECK(bo3_ctl_driving(&s, vt_game) == 0, "the module is leaving: not driving");
+    s.module_step = 5;
+    s.no_pause = 1;
+    CHECK(bo3_ctl_driving(&s, vt_game) == 0, "the title takes no pause: not driving");
+    s.no_pause = 0;
+    s.module_vt = 0x003A9E7Cu;               /* the front end's */
+    CHECK(bo3_ctl_driving(&s, vt_game) == 0, "the front end: not driving");
+    s.module_vt = vt_game;
+
+    /* Each player has his own event: the one who finished does not stop the
+     * other one from driving. */
+    {
+        struct bo3_ctl_state p1 = s, p2 = s;
+
+        p1.phase = 3;                          /* player 1 has finished */
+        p2.phase = 2;                          /* player 2 is still racing */
+        CHECK(bo3_ctl_driving(&p1, vt_game) == 0, "player 1 finished: not driving");
+        CHECK(bo3_ctl_driving(&p2, vt_game) == 1, "player 2 still racing: driving");
+        p1.results = 1;                        /* player 1's results are up */
+        CHECK(bo3_ctl_driving(&p2, vt_game) == 1,
+              "player 1's results do not stop player 2 from driving");
+    }
+}
+
 int main(void)
 {
     test_table();
@@ -488,6 +563,7 @@ int main(void)
     test_handover();
     test_chain();
     test_esc();
+    test_gate();
     printf("bo3_controls: %d checks, %d failed\n", g_checks, g_fail);
     return g_fail ? 1 : 0;
 }

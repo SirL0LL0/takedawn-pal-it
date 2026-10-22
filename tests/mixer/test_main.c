@@ -1,5 +1,6 @@
 /* The title's side of the host mixer (src/game/mixer.c, BO-114). */
 #include "mixer.h"
+#include "region.h"                     /* the two discs' addresses */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -185,13 +186,14 @@ int main(void)
         CHECK(bo3_mixer_classify(&v) == OTHER, "a silent head alone must not match");
     }
 
-    /* 4. Streams: who turned the voice on. */
-    CHECK(stream(0x00152FB2, 1) == MUSIC, "the music manager's stream (EA GAMES TRAX, custom music)");
-    CHECK(stream(0x00155AE3, 1) == MUSIC, "the custom-soundtrack player's stream (the user's own music, BO-108)");
-    CHECK(stream(0x00153F03, 1) == MUSIC, "a stream from elsewhere in the music manager");
-    CHECK(stream(0x001546BA, 1) == DJ, "its speech path");
-    CHECK(stream(0x0001507D, 1) == FILM, "the film player");
-    CHECK(stream(0x0020BD49, 0) == STREAMS, "a RenderWare stream's buffer voice");
+    /* 4. Streams: who turned the voice on. The addresses are the title's,
+     * the two discs' (region.h; the same ones src/game/mixer.c names). */
+    CHECK(stream(BO3_VA(0x00152FB2u, 0x00153252u), 1) == MUSIC, "the music manager's stream (EA GAMES TRAX, custom music)");
+    CHECK(stream(BO3_VA(0x00155AE3u, 0x00155D83u), 1) == MUSIC, "the custom-soundtrack player's stream (the user's own music, BO-108)");
+    CHECK(stream(BO3_VA(0x00153F03u, 0x001541A3u), 1) == MUSIC, "a stream from elsewhere in the music manager");
+    CHECK(stream(BO3_VA(0x001546BAu, 0x0015495Au), 1) == DJ, "its speech path");
+    CHECK(stream(BO3_VA(0x0001507Du, 0x0001513Du), 1) == FILM, "the film player");
+    CHECK(stream(BO3_VA(0x0020BD49u, 0x0020C059u), 0) == STREAMS, "a RenderWare stream's buffer voice");
     CHECK(stream(0x00012345, 1) == OTHER, "a stream from unknown code");
     CHECK(stream(0, 1) == MUSIC, "a stream with no turn-on record");
     CHECK(stream(0x00012345, 0) == OTHER, "an unknown buffer");
@@ -199,7 +201,12 @@ int main(void)
     /* 4b. The leveller's voices (BO-132): the custom-soundtrack player's
      * stream, and no other music, speech, film or effect. */
     {
-        static const unsigned ras[] = { 0x00155AE3, 0x00152FB2, 0x00153F03, 0x001546BA, 0x0001507D, 0x00012345, 0 };
+        static const unsigned ras[] = { BO3_VA(0x00155AE3u, 0x00155D83u),
+                                       BO3_VA(0x00152FB2u, 0x00153252u),
+                                       BO3_VA(0x00153F03u, 0x001541A3u),
+                                       BO3_VA(0x001546BAu, 0x0015495Au),
+                                       BO3_VA(0x0001507Du, 0x0001513Du),
+                                       0x00012345, 0 };
         for (unsigned k = 0; k < sizeof ras / sizeof ras[0]; k++) {
             unsigned stack[4] = { 0x0001FFFF, 0x001CECA1, ras[k], 0x00016C17 };
             apu_bus_voice v;
@@ -207,7 +214,8 @@ int main(void)
             v.stream = 1;
             v.stack = stack;
             v.nstack = ras[k] ? 4 : 0;
-            CHECK(bo3_mixer_is_custom(&v) == (ras[k] == 0x00155AE3), "the leveller's voice for return address %08X", ras[k]);
+            CHECK(bo3_mixer_is_custom(&v) == (ras[k] == BO3_VA(0x00155AE3u, 0x00155D83u)),
+                  "the leveller's voice for return address %08X", ras[k]);
         }
     }
 

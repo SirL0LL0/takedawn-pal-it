@@ -33,6 +33,51 @@ typedef struct bo3_ctl_port {
     uint8_t esc_start;  /* ... and its press began while driving: it is Start until let go */
 } bo3_ctl_port;
 
+/* The title's state, as the gate reads it (controls.c). */
+struct bo3_ctl_state {
+    unsigned module;        /* the current module */
+    unsigned module_vt;     /* its vtable */
+    int      paused_by;     /* the player who paused, -1 while none */
+    unsigned module_step;   /* the module switch: 4 and 5 coming up, 6 leaving */
+    int      no_pause;      /* the title takes no pause now */
+    int      results;       /* the player's results are up */
+    int      intro;         /* the player's captions are up */
+    unsigned phase;         /* the player's event: 1 before the GO, 2 in play, 3 finished */
+    unsigned countdown;     /* the countdown's length, 0 or -1.0 while none */
+};
+
+/* The stride between the players' race records and between their events.
+ * The same in both discs (the structures are the game's own). */
+#define BO3_CTL_P_SIZE  0x0C50u
+#define BO3_CTL_P_EVENT 0x27E0u
+
+/* Is the title taking driving input for this player?
+ *
+ * The game module runs and is not being left, nobody has paused, and the
+ * player's event is in play (phase 2: from the GO to the finish, crashes
+ * included) or counting down (phase 0 or 1 with the countdown's length set:
+ * the boost start is on the accelerator). Not before: a crash event's
+ * fly-by and captions take A to go on. Not after: phase 3 is the finish,
+ * and the results byte stays up while the title sets the phase back for a
+ * retry.
+ *
+ * Each player has his own event, so a player still racing keeps the layout
+ * when the other one finishes (and the other one's buttons are not held
+ * back). vt_game is the game module's vtable (the front end's is another).
+ */
+static inline int bo3_ctl_driving(const struct bo3_ctl_state *s, unsigned vt_game)
+{
+    if (s->module < 0x10000u || s->module >= 0x04000000u)
+        return 0;
+    if (s->module_vt != vt_game)
+        return 0;
+    if (s->paused_by != -1 || s->module_step == 6 || s->no_pause)
+        return 0;
+    if (s->results || s->intro)
+        return 0;
+    return s->phase == 2 || (s->phase < 2 && s->countdown != 0xBF800000u && s->countdown != 0);
+}
+
 /* A stick's push (1..32767) as a pedal: 0 inside the dead part, 255 at full. */
 static inline uint8_t bo3_ctl_pedal(int v)
 {

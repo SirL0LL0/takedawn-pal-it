@@ -52,6 +52,7 @@ extern ptrdiff_t g_xbox_mem_offset;
 #define CTL_MODULE_STEP BO3_VA(0x004D53B4u, 0x004D56D4u)     /* the module switch: 4 and 5 coming up, 6 leaving */
 #define CTL_P1          BO3_VA(0x004D0738u, 0x004D0A58u)     /* player 1's race record; player 2's is CTL_P_SIZE on */
 #define CTL_P_SIZE      0x0C50u
+#define CTL_P_EVENT     0x27E0u           /* the stride between the players' events */
 #define CTL_P_RESULTS   0x00u           /* byte: the event is over for the player, results up */
 #define CTL_P_STATE     0x08u           /* the camera: 4 chase, 0x40 crash, 0x400 fly-by (logged only) */
 #define CTL_P_INTRO     0x2Fu           /* byte: a crash event's fly-by or captions are up */
@@ -59,44 +60,58 @@ extern ptrdiff_t g_xbox_mem_offset;
 #define CTL_COUNTDOWN   BO3_VA(0x0073B520u, 0x0073B830u)     /* float: 0, then -1, until the countdown begins; then its length */
 #define CTL_NO_PAUSE    BO3_VA(0x00752D33u, 0x00753043u)     /* byte: the title takes no pause now */
 
+/* The player a title port belongs to.
+ *
+ * The emulated pads sit on the title's last two ports: the title's port 2 is
+ * the first host pad, port 3 the second. The title gives the first pad to
+ * player 1 and the second to player 2 (the keyboard is merged on the first
+ * host port, so it is player 1's). */
+static int ctl_player(uint32_t port)
+{
+    return port >= 3u ? 1 : 0;
+}
+
 static bo3_ctl_port s_port[4];
 static int s_scripted_too;              /* BO3_CTL_SCRIPTED */
 static FILE *s_log;                     /* BO3_CTL_LOG */
 static uint32_t (*s_flips)(void);
 
-/* The title is taking driving input now.
+/* The title is taking driving input now, for a player.
  *
- * The game module runs and is not being left, nobody has paused, and the
- * player's event is in play: phase 2 (from the GO to the finish, crashes
- * included: the impact time, the aftertouch and the crashbreaker are driving
- * controls), or the countdown before it (the boost start is on the
- * accelerator): phase 0 or 1 with the countdown's length set. Not before: a
- * crash event's fly-by and captions take A to go on. Not after: phase 3 is
- * the finish, and the results byte stays up while the title sets the phase
- * back for a retry. CTL_NO_PAUSE is the title's own "Start does not pause
- * now" (the stage update tests it beside the paused player, sub_00026050 at
- * 0x26609): set over the results. */
-static int ctl_driving(void)
+ * The gate: the game module runs and is not being left, nobody has paused,
+ * and the player's event is in play or counting down (controls.h has the
+ * rules and the reasons). Each player's own event: the phase (the title
+ * walks the players' events with the CTL_P_EVENT stride) and the race
+ * record (the results and the captions bytes, CTL_P_SIZE on for the second
+ * player). The countdown is the title's own one, read at one address for
+ * every player.
+ *
+ * It used to be player 1's event for both players, so a player still
+ * racing lost the layout when the other one finished (and the buttons of
+ * the player who finished were held back).
+ */
+static int ctl_driving(int player)
 {
-    uint32_t mod = M32(CTL_MODULE), phase, cd;
+    struct bo3_ctl_state s;
+    uint32_t rec = CTL_P1 + (uint32_t)player * CTL_P_SIZE;
 
-    if (mod < 0x10000u || mod >= 0x04000000u || M32(mod) != CTL_VT_GAME)
-        return 0;
-    /* Quitting from the pause menu clears the paused player a second before
-     * the module changes: the module is on its way out then. */
-    if (M32(CTL_PAUSED_BY) != 0xFFFFFFFFu || M32(CTL_MODULE_STEP) == 6 || M8(CTL_NO_PAUSE))
-        return 0;
-    if (M8(CTL_P1 + CTL_P_INTRO) || M8(CTL_P1 + CTL_P_RESULTS))
-        return 0;
-    phase = M32(CTL_PHASE);
-    cd = M32(CTL_COUNTDOWN);
-    return phase == 2 || (phase < 2 && cd != 0xBF800000u && cd != 0);
+    s.module = M32(CTL_MODULE);
+    s.module_vt = (s.module >= 0x10000u && s.module < 0x04000000u) ? M32(s.module) : 0;
+    s.paused_by = (int)M32(CTL_PAUSED_BY);
+    s.module_step = M32(CTL_MODULE_STEP);
+    s.no_pause = M8(CTL_NO_PAUSE);
+    s.results = M8(rec + CTL_P_RESULTS);
+    s.intro = M8(rec + CTL_P_INTRO);
+    s.phase = M32(CTL_PHASE + (uint32_t)player * CTL_P_EVENT);
+    s.countdown = M32(CTL_COUNTDOWN);
+    return bo3_ctl_driving(&s, CTL_VT_GAME);
 }
 
 /* BO3_CTL_LOG=<file>: what the gate saw and did, for the scene test
  * (tools/headless/controls_scene.sh) and for finding the title's state. "S"
- * a watched word changed, "G" a pad's layout changed, "P" a pad's bytes as
- * read and as given (when either changed). Off unless set. */
+ * a watched word changed, "D" the gate for player 1, "E" the gate for
+ * player 2, "G" a pad's layout changed, "P" a pad's bytes as read and as
+ * given (when either changed). Off unless set. */
 static void ctl_log_frame(void)
 {
     static const struct { uint32_t va; const char *name; } w[] = {
@@ -105,11 +120,12 @@ static void ctl_log_frame(void)
         { CTL_P1 + CTL_P_RESULTS, "p1_results" }, { CTL_P1 + CTL_P_STATE, "p1_state" },
         { CTL_P1 + 0x2Cu, "p1_intro_word" }, { CTL_PHASE, "p1_phase" },
         { CTL_COUNTDOWN, "p1_countdown" }, { BO3_VA(0x00752D30u, 0x00753040u), "752D30" },
-        { CTL_PHASE + 0x27E0u, "p2_phase" },
+        { CTL_PHASE + CTL_P_EVENT, "p2_phase" },
+        { CTL_P1 + CTL_P_SIZE + CTL_P_RESULTS, "p2_results" },
     };
     enum { N = sizeof w / sizeof w[0] };
     static uint32_t last[N + 1];
-    static int primed, drv = -1;
+    static int primed, drv = -1, drv2 = -1;
     uint32_t flip = s_flips ? s_flips() : 0, mod = M32(CTL_MODULE), v;
     int i, d;
 
@@ -124,10 +140,14 @@ static void ctl_log_frame(void)
         last[i] = v;
     }
     primed = 1;
-    d = ctl_driving();
+    d = ctl_driving(0);
     if (d != drv)
         fprintf(s_log, "D %u driving %d\n", flip, d);
     drv = d;
+    d = ctl_driving(1);
+    if (d != drv2)
+        fprintf(s_log, "E %u driving %d\n", flip, d);
+    drv2 = d;
 }
 
 static void ctl_pad(void)
@@ -154,7 +174,7 @@ static void ctl_pad(void)
                && (g->wButtons & XBOX_GAMEPAD_BACK);
         int was = s_port[port].esc_start;
 
-        bo3_ctl_esc(&s_port[port], g, esc, esc ? ctl_driving() : 0);
+        bo3_ctl_esc(&s_port[port], g, esc, esc ? ctl_driving(ctl_player(port)) : 0);
         if (s_log && s_port[port].esc_start != was)
             fprintf(s_log, "E %u Esc %s\n", s_flips ? s_flips() : 0,
                     s_port[port].esc_start ? "is Start" : "released");
@@ -166,7 +186,7 @@ static void ctl_pad(void)
     /* The emulated pads sit on the title's last two ports: the title's port
      * 2 is the first host pad. */
     src = usb >= 0 ? xbox_InputSources((DWORD)usb) : 0;
-    driving = ctl_driving();
+    driving = ctl_driving(ctl_player(port));
     scripted = usb >= 0 && (xbox_InputScriptedPads() & (1u << usb));
     nintendo = xbox_InputFaceLayoutNintendo();
     /* The keys and the on-screen controls are the Xbox layout always. */
@@ -185,8 +205,9 @@ static void ctl_pad(void)
         bo3_ctl_mirror(g);
     raw = *g;
     if (s_log && ps2 != s_port[port].ps2)
-        fprintf(s_log, "G %u port %u %s (scheme %d driving %d sources %u)\n",
-                s_flips ? s_flips() : 0, port, ps2 ? "ps2" : "xbox", scheme, driving, src);
+        fprintf(s_log, "G %u port %u %s (scheme %d driving %d sources %u) player %d\n",
+                s_flips ? s_flips() : 0, port, ps2 ? "ps2" : "xbox", scheme, driving, src,
+                ctl_player(port) + 1);
     bo3_ctl_apply(&s_port[port], g, ps2, nintendo);
     if (s_log) {
         static XBOX_GAMEPAD lraw[4], lout[4];
@@ -208,10 +229,10 @@ static void ctl_pad(void)
 /* The on-screen controls' layout (touch_pad.h, BO-189): the race one while
  * the title takes driving input, the menu one otherwise. Asked on the
  * window's thread each frame; the words it reads are the title's, read
- * only. */
+ * only. The on-screen controls are player 1's. */
 static int touch_driving(void)
 {
-    return g_xbox_mem_offset ? ctl_driving() : 0;
+    return g_xbox_mem_offset ? ctl_driving(0) : 0;
 }
 
 void bo3_controls_start(uint32_t (*flips)(void))

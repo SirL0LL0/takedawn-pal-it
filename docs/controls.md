@@ -156,7 +156,6 @@ from its memory at that same moment, so the layout follows the title's state
 on the same frame.
 
 Driving is all of:
-
 | What | Where | Evidence |
 |---|---|---|
 | The game module is the current one, and is not being left | `[0x4D5370]` is the object with vtable 0x3A9ACC (the front end's is 0x3A9E7C); `[0x4D53B4]` is not 6 | the trace: the front-end vtable through boot, menus, garage, the training video and the loading screen; 6 from "Quit > Yes" until the module changes |
@@ -165,6 +164,20 @@ Driving is all of:
 | A crash event's fly-by and captions are not up | byte `[0x4D0767]` is 0 | 1 through the fly-by, and from the captions until A leaves them |
 | The results are not up | byte `[0x4D0738]` is 0 | 1 from the results screen to the end of the event |
 | The event is in play, or counting down | `[0x73B51C]` is 2, or below 2 with the countdown's length at `[0x73B520]` set (not -1.0, not 0) | 2 from the GO; 3 when the event ends for the player; the length (4.5 s in a race, 3 s in a crash event) is written when the countdown begins |
+
+The last three are the player's own: the race record (`0x4D0738` and its
+`+0x2F`, the captions byte) and the event (the phase) are the player's, the
+second player's being `+0xC50` and `+0x27E0` on. The title walks the
+players' events with that stride (`add esi, 0x27E0` after the phase test)
+and reads both race records with the same fields, so the gate can tell the
+two apart. The countdown is the title's own one, at one address for every
+player.
+
+It used to be player 1's event for both players: a player still racing lost
+the layout when the other one finished, and the buttons of the player who
+finished were held back (the layout ends with the event, and a button down
+under it reads released until it is let go). The gate is now per player
+(`bo3_ctl_driving` in `src/game/controls.h`, checked by `tests/controls`).
 
 The countdown counts as driving because the boost start is on the
 accelerator. A crash counts as driving: the impact time, the aftertouch and
@@ -253,7 +266,12 @@ affected.) A script that is not a stand-in gets neither setting.
 - A controller in the hand: every run above is a pad script standing in for
   one. The built-in pads of the Steam Deck and the Retroid Pocket, Windows
   (native XInput and SDL) and Linux were not run.
-- Two players: the gate reads player 1's event. Split screen was not run.
+- Two players: the gate reads each player's own event (the race record and
+  the phase), so a player still racing keeps the layout when the other one
+  finishes. The addresses were checked against the PAL disassembly (the
+  title walks the players' events with the 0x27E0 stride and reads both race
+  records) and the rule is checked by `tests/controls`; a split screen with
+  two pads was still not run.
 - A race to its finish line, Road Rage, Burning Lap and online: the end of an
   event was traced in a crash event and by quitting a race.
 - The crashbreaker itself was not triggered in a run (it needs the wrecks);
