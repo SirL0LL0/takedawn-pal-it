@@ -3,6 +3,11 @@
 The Xbox dashboard had a language setting, and the game reads it at start-up
 to pick its text, its speech and its films. Takedawn can answer it.
 
+This checkout is the Italian one: the game's own text comes from the
+European disc in Italian, and the interface Takedawn draws over it (the
+settings overlay, the mixer's page, the installer's messages) is in Italian
+too.
+
 ## The setting
 
 `display.language` in `enhance.toml` (beside the program) names it:
@@ -70,6 +75,24 @@ What the game loads for Italian, from the log:
 [PATH] \Device\CdRom0\ovid\italia30.xmv      the voices
 [PATH] \Device\CdRom0\ovid\Titles30.xmv      the films
 ```
+
+## The interface
+
+The words Takedawn draws are in Italian in this checkout: the settings
+overlay (its pages, the rows and their descriptions, the choices, the notes
+under the rows, the footer's key hints), the mixer's page, the update
+check's messages, the shader pre-build's progress, the installer's help and
+errors, and the fatal messages the game shows when it cannot start.
+
+The machine-readable parts stay in English: the keys in `settings.toml`
+(`nearest`, `linear`, `auto`, ...), the installer's line protocol
+(`PROTOCOL`, `STEP`, `LOG`, `RESULT`) and the log lines. Those are formats
+that a program parses, not words the player reads.
+
+The toolkit carries the interface's Italian in
+`src/overlay/overlay_ui.cpp`, `src/overlay/overlay_mixer.inc` and
+`src/overlay/xbox_update.c`; the title's own messages are in
+`src/game/install.c` and `src/game/main.c`.
 
 ## Where the code is
 
