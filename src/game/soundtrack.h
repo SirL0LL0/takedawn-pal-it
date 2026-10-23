@@ -31,6 +31,15 @@ void bo3_soundtrack_create_decoder(bo3_guest_fn title_fn);
  * EA GAMES TRAX's table does not have (one left from a longer custom list)
  * is brought into range first (BO-120); then the title's own. */
 void bo3_soundtrack_start_track(bo3_guest_fn title_fn);
+/* sub_00155420, the title's "start the music of the source chosen"
+ * (stdcall, the manager): where the title reads which source (EA GAMES TRAX
+ * or soundtrack n) the player chose, and starts a track of it. Here
+ * (BO-230): the source the player confirmed in the EA GAMES TRAX screen is
+ * remembered by name (audio.custom_music_soundtrack), and, once per run,
+ * with a folder set and audio.custom_music_at_start on, the title is put on
+ * the remembered soundtrack before the title's own code reads the source.
+ * With no folder it runs the title's body and nothing else. */
+void bo3_soundtrack_start_source(bo3_guest_fn title_fn);
 /* recomp_lookup_manual: the methods of that decoder object, called through
  * its vtable; NULL for every other address. */
 bo3_guest_fn bo3_soundtrack_lookup(uint32_t xbox_va);

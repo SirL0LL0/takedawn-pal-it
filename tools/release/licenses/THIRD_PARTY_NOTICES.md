@@ -97,6 +97,7 @@ list and is shipped in every package.
 | [ADPCM-XQ](https://github.com/dbry/adpcm-xq) decoder (through xemu) | | BSD-3-Clause | David Bryant | Decodes the game's ADPCM sound. Text: `ADPCM-XQ-BSD-3-Clause.txt` |
 | AMD FidelityFX CAS (the algorithm) | | MIT | Advanced Micro Devices | Sharpening |
 | Super-xBR (the algorithm, a C version written from the published shaders) | | MIT | 2015 Hyllian (sergiogdb@gmail.com) | Menu and HUD upscaling (`graphics.ui_scale`). Text: in `xboxrecomp-NOTICE.txt` |
+| [FSRCNNX x2 8-0-4-1](https://github.com/igv/FSRCNN-TensorFlow) and [NNEDI3 nns16-win8x4](https://github.com/bjin/mpv-prescalers), as shader files | release 1.1; mpv-prescalers commit b3f0a59d | LGPL-3.0-or-later | 2017-2021 igv; bjin (NNEDI3 by tritical) | Texture upscale (`graphics.texture_upscale`, off by default). Not built into the program: the files sit beside it in `shaders/upscale`, with `COPYING.LESSER`, `COPYING` and a `NOTICE.md` that says where they come from and how to replace them |
 | FXAA 3.11 (the algorithm, written from the paper) | | no code taken | NVIDIA (the algorithm) | Anti-aliasing |
 | [glslang](https://github.com/KhronosGroup/glslang) | 16.6.0 on Windows and Android; the Steam Runtime 3 SDK's on Linux | BSD-3-Clause, Apache-2.0 and MIT (Khronos) | | Compiles shaders to SPIR-V for the Vulkan backend. Linked statically on Windows, Linux and Android |
 | [libadrenotools](https://github.com/bylaws/libadrenotools) and its linkernsbypass | commit 8fae8ce | BSD-2-Clause | 2021 Billy Laws | Loads the Turnip driver inside the Android app. Linked into `libmain.so`, plus four small hook libraries |
@@ -164,7 +165,8 @@ there from its source archive and the small X11 helper libraries Qt's xcb
 plugin needs (`libxcb-cursor`, `libxcb-icccm`, `libxcb-image`,
 `libxcb-keysyms`, `libxcb-render-util`, `libxcb-util` and the libxcb
 extension libraries; MIT/X11 licences, their Debian copyright files are in
-the package). glibc, libstdc++, the Vulkan loader, libxkbcommon, FreeType and
+the package), and libxkbcommon with libxkbcommon-x11 (MIT), used only on a
+system that lacks them. glibc, libstdc++, the Vulkan loader, FreeType and
 fontconfig are the system's. The Windows
 program links llvm-mingw's libc++, libunwind and compiler-rt (Apache-2.0 with
 LLVM exceptions), the mingw-w64 runtime and winpthreads statically. Qt, where

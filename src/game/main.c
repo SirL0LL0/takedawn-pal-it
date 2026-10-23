@@ -72,6 +72,7 @@ extern void xbox_InputPanicStop(int wait_ms);
 #include "apu.h"                       /* mcpx_apu_set_voice_tag_hook */
 #include "usb/ohci.h"
 #include "region.h"                   /* BO3_VA: NTSC-U or PAL addresses */
+#include "region_map.h"               /* the addresses the upstream's new code names */
 #include "controls.h"                 /* input.control_scheme (BO-106) */
 #include "install.h"                  /* the data root, --install, --version (BO-103) */
 #include "fatal.h"                    /* a start-up failure the player sees */
@@ -81,6 +82,7 @@ extern void xbox_InputPanicStop(int wait_ms);
 #include "dsound_notify.h"            /* the DirectSound done-list guard (BO-173) */
 #include "gp_image.h"                 /* the GP effects image (BO-119) */
 #include "nv2a_texrep.h"              /* the LED sign decals' depth offset (BO-176) */
+#include "nv2a_texup.h"               /* graphics.texture_upscale's road skip list (BO-245) */
 #if defined(__has_include)
 #  if __has_include("platform/recomp_restart.h")
 #    include "platform/recomp_restart.h"    /* the overlay's "Restart game" (BO-124) */
@@ -267,7 +269,10 @@ static int host_is_gamescope(void)
  * toward the eye: 512 units of the 24-bit range, a few hundred more than
  * that noise and, at 60 m, about 20 cm. The same two textures (same bytes)
  * are in US C3, M1 and P1; C1 has its own copies (BO-204, found by name in
- * the tracks' static.dat and checked in drive-bys). */
+ * the tracks' static.dat and checked in drive-bys).
+ * BO-253: with culling off the toolkit applies the offset on the front faces
+ * only; from behind, the words would otherwise come through the board and
+ * read mirrored (GitHub #53). */
 static void bo3_led_signs_init(void)
 {
     static const struct nv2a_texrep_zbias k_signs[] = {
@@ -288,6 +293,37 @@ static void bo3_led_signs_init(void)
         { "R_Warning_Marker (EU C3)", 0x8004a89eada4b714ull, 0x0C, 128, 128, -512.0f },
     };
     nv2a_texrep_register_zbias(k_signs, sizeof k_signs / sizeof k_signs[0]);
+}
+
+/* BO-245: the road surfaces graphics.texture_upscale leaves as they are
+ * while graphics.texup_roads is off (the default): the upscalers make their
+ * fine grain noisy (FSRCNNX most). texrep hashes of level 0, picked by look
+ * from the BO-240 dumps of six tracks (US C1, C2, C3, EU M1, P2, AS C1): the
+ * grey asphalt noise sheets, the worn lanes with and without their markings,
+ * the concrete carriageways. The tracks not dumped yet are phase 3's. */
+static void bo3_texup_roads_init(void)
+{
+    static const uint64_t k_roads[] = {
+        0x08fcb275cac943c1ull,
+        0x127ecbbbc68d1663ull,
+        0x18a810a0ff3e3e02ull,
+        0x1e93b224b6f7221eull,
+        0x2f16591fdebcf5f7ull,
+        0x332adea031b67a31ull,
+        0x451f38fe7d1e2b8cull,
+        0x5e1eb6c68c085b14ull,
+        0x639dbb75e9632325ull,
+        0x7e9a4671936e5ca6ull,
+        0x8719b45b0e994450ull,
+        0xa58356aef15329b6ull,
+        0xa9b429efebbad73bull,
+        0xb58e3302c94354b6ull,
+        0xccf50e366e7defbdull,
+        0xdd0055c160c56c73ull,
+        0xecc6cbfebb1a27ceull,
+        0xf42c45d4ce360871ull,
+    };
+    nv2a_texup_set_skip_list(k_roads, sizeof k_roads / sizeof k_roads[0]);
 }
 
 /* BO-110: the title's light sprites drawn in a view's 3D, brighter with HDR
@@ -661,7 +697,7 @@ static int hm_ok(uint32_t p)
 
 static void hud_mon_flip(uint32_t flip)
 {
-    static const uint32_t scenes[4] = { BO3_VA(0x54F914, 0x54FC34), BO3_VA(0x54F984, 0x54FCA4), BO3_VA(0x557A20, 0x557D40), BO3_VA(0x45BAD0, 0x45BDF0) };
+    static const uint32_t scenes[4] = { BO3_VA(0x54F914, 0x54FC34), BO3_VA(0x54F984, 0x54FCA4), HR_SCENE_FE, BO3_VA(0x45BAD0, 0x45BDF0) };
     static double last_x0 = -1.0, last_x1 = -1.0, last_aspect = -1.0;
     static int last_fix = -1;
     const double eps = 0.5;
@@ -759,7 +795,7 @@ static void hud_mon_flip(uint32_t flip)
  * connected pad: the port, wButtons and the eight analog bytes (A B X Y
  * Black White, LT, RT). tools/headless/reverse_scene.sh asserts on it. Off
  * unless set. */
-#define DL_PADS   BO3_VA(0x004AE20Cu, 0x004AE52Cu)           /* the pad manager (sub_00021A50's edi) */
+#define DL_PADS   HR_HIT_PAD           /* the pad manager (sub_00021A50's edi) */
 static FILE *s_dl_f;
 static volatile uint32_t s_uw_flips;    /* the title's flips (uw_flip, below) */
 
@@ -849,17 +885,17 @@ static void pace_log(uint32_t flip)
 
     if (!s_pl_f || !m)
         return;
-    stage = HD_M32(BO3_VA(0x4D5370, 0x4D5690));
+    stage = HD_M32(HR_STAGE);
     fprintf(s_pl_f, "P %u t %.3f req %u cur %u mode %u/%u steps %d gs %u"
             " wt %u slow %u run %u crash %u%u st %u obj %08X gt %u ft %.5f"
             " pl %u mu %u/%u\n",
-            flip, pace_ms(), m[BO3_VA(0x4D538D, 0x4D56AD)], m[BO3_VA(0x4D538E, 0x4D56AE)], HD_M32(BO3_VA(0x4D5390, 0x4D56B0)),
-            HD_M32(BO3_VA(0x4D5394, 0x4D56B4)), (int)HD_M32(BO3_VA(0x4D53AC, 0x4D56CC)), HD_M32(BO3_VA(0x4A1EB4, 0x4A21D4)),
+            flip, pace_ms(), m[HR_HALF_ASKED], m[HR_HALF_RATE], HD_M32(BO3_VA(0x4D5390, 0x4D56B0)),
+            HD_M32(BO3_VA(0x4D5394, 0x4D56B4)), (int)HD_M32(HR_FRAME_STEPS), HD_M32(HR_STEP_COUNT),
             HD_M32(BO3_VA(0x60EA0C, 0x60ED1C)), HD_M32(BO3_VA(0x60EA18, 0x60ED28)), m[BO3_VA(0x60EA28, 0x60ED38)],
-            m[BO3_VA(0x73BACA, 0x73BDDA)], m[BO3_VA(0x73BACA, 0x73BDDA) + 0x27E0], HD_M32(BO3_VA(0x4D53B4, 0x4D56D4)),
+            m[BO3_VA(0x73BACA, 0x73BDDA)], m[BO3_VA(0x73BACA, 0x73BDDA) + 0x27E0], HD_M32(HR_GAME_STATE),
             (stage >= 0x10000u && stage < 0x08000000u) ? HD_M32(stage + 0x1B8) : 0,
-            HD_M32(BO3_VA(0x4AE1EC, 0x4AE50C)), HD_MF(BO3_VA(0x4D53B0, 0x4D56D0)),
-            HD_M32(BO3_VA(0x73A1C0, 0x73A4D0)), HD_M32(BO3_VA(0x4115E8, 0x411918) + 0x5F4), HD_M32(BO3_VA(0x4115E8, 0x411918) + 0x5F8));
+            HD_M32(BO3_VA(0x4AE1EC, 0x4AE50C)), HD_MF(HR_FRAME_TIME),
+            HD_M32(HR_PLAYERS), HD_M32(BO3_VA(0x4115E8, 0x411918) + 0x5F4), HD_M32(BO3_VA(0x4115E8, 0x411918) + 0x5F8));
 }
 
 static void pace_log_start(void)
@@ -965,6 +1001,39 @@ static double scenery_lod_scale(void)
     return (v && !strcmp(v, "far")) ? SCENERY_FAR_SCALE : 1.0;
 }
 
+/* display.rival_marker (RECOMP_GFX_RIVAL_MARKER, BO-241): where the marker
+ * over a rival (sub_0018F060) changes from its arrow to its race position
+ * and back, as view depths (world units, metres), read by the patches'
+ * expressions while the setting is "farther" (config/patches.json). As
+ * shipped one distance, 35, checked every 30 steps; "farther" the position
+ * below RIVAL_NEAR, the arrow again past RIVAL_FAR, checked every step.
+ * BO3_RIVAL_SWITCH=<near>,<far>: other distances, for a test.
+ * docs/rival-marker.md. */
+#define RIVAL_NEAR 60.0
+#define RIVAL_FAR  75.0
+static double rival_switch(int which)
+{
+    static double v[2] = { -1.0, -1.0 };
+
+    if (v[0] < 0.0) {
+        const char *e = getenv("BO3_RIVAL_SWITCH");
+        double n = RIVAL_NEAR, f = RIVAL_FAR;
+        if (e && sscanf(e, "%lf,%lf", &n, &f) == 2 && n > 0.0 && f >= n) {
+            fprintf(stderr, "[RIVAL] switch at %.1f / %.1f (BO3_RIVAL_SWITCH); the marker"
+                    " hidden past %.1f (%.1f with 0x5A3759 = %u)\n", n, f,
+                    HD_MF(HR_RIVAL_NEAR), HD_MF(HR_RIVAL_FAR), (unsigned)(HD_M32(HR_RIVAL_SLOTS) >> 8 & 0xFFu));
+        } else {
+            n = RIVAL_NEAR;
+            f = RIVAL_FAR;
+        }
+        v[0] = n;
+        v[1] = f;
+    }
+    return v[which];
+}
+static double rival_near(void) { return rival_switch(0); }
+static double rival_far(void)  { return rival_switch(1); }
+
 /* The prop types of the track in play (MEM32(0x7397B4): + 0x34 the count,
  * + 0x38 the 0x70-byte records), one line each: the models (+0x5C detailed,
  * +0x5E simple, +0x60), the flags (+0x62; bit 0: two models), the switch
@@ -974,7 +1043,7 @@ static void scenery_props_dump(void)
     uint32_t trk, tab;
     int n, i;
 
-    if (!g_xbox_mem_offset || !(trk = HD_M32(BO3_VA(0x7397B4, 0x739AC4))))
+    if (!g_xbox_mem_offset || !(trk = HD_M32(HR_TRACK)))
         return;
     n = *(const int16_t *)((uintptr_t)g_xbox_mem_offset + trk + 0x34);
     tab = HD_M32(trk + 0x38);
@@ -1078,6 +1147,31 @@ static void fx_at_flip(uint32_t flip)
                 scenery_props_dump();
             continue;
         }
+        if (!strncmp(what, "pdraw", 5) && what[5] >= '0' && what[5] <= '9') {
+            /* "<flip> pdraw<type> <metres>": the draw distance (+0x68) of
+             * that prop type of the track in play, 0 puts the title's own
+             * back (BO-253: which props are drawn only up to a short
+             * distance, in a paused scene). */
+            static float saved[64];
+            static unsigned char have[64];
+            uint32_t trk = g_xbox_mem_offset ? HD_M32(HR_TRACK) : 0;
+            int t = atoi(what + 5);
+
+            if (trk && t >= 0 && t < 64
+                && t < *(const int16_t *)((uintptr_t)g_xbox_mem_offset + trk + 0x34)) {
+                float *p = (float *)((uintptr_t)g_xbox_mem_offset + HD_M32(trk + 0x38)
+                                     + (uint32_t)t * 0x70 + 0x68);
+
+                if (!have[t]) {
+                    saved[t] = *p;
+                    have[t] = 1;
+                }
+                *p = dv > 0.0 ? (float)dv : saved[t];
+                fprintf(stderr, "BO3_FX_AT: flip %u, prop %d draw distance %.0f"
+                        " (the title's %.0f)\n", flip, t, (double)*p, (double)saved[t]);
+            }
+            continue;
+        }
         if (!blur && strcmp(what, "bloom"))
             continue;
 #ifdef XBOXRECOMP_HAVE_OVERLAY
@@ -1146,7 +1240,7 @@ static void hud_dump_frames(FILE *f, uint32_t fr, int depth)
 
 static void hud_dump_scenes(FILE *f)
 {
-    static const uint32_t scenes[4] = { BO3_VA(0x54F914, 0x54FC34), BO3_VA(0x54F984, 0x54FCA4), BO3_VA(0x557A20, 0x557D40), BO3_VA(0x45BAD0, 0x45BDF0) };
+    static const uint32_t scenes[4] = { BO3_VA(0x54F914, 0x54FC34), BO3_VA(0x54F984, 0x54FCA4), HR_SCENE_FE, BO3_VA(0x45BAD0, 0x45BDF0) };
     int s;
 
     fprintf(f, "rect0 %.2f %.2f %.2f %.2f rect1 %.2f %.2f %.2f %.2f nplayers %u\n",
@@ -1893,6 +1987,15 @@ static int host_main(void)
     xbox_OhciInit();
     xbox_WatchdogStart();
 
+#if defined(_WIN32)
+    /* BO-282.10: on Windows the guest threads run unpinned (the toolkit pins
+     * them to one core unless the title opts out). The pin cost this title
+     * pictures at 120 Hz (its thread waited for the idle pinned core to wake
+     * after each hand-off), and its race class is empty: the Mac has always
+     * run it unpinned, and a lockstep race gives the same step hashes pinned
+     * and unpinned. RECOMP_DEBUG=guest_cpus=<n> pins again. */
+    xbox_GuestCpusDefaultUnpinned();
+#endif
     printf("Initializing kernel replacement...\n");
     xbox_kernel_init();
     /* The HDD partitions live in the save folder; without it Partition1.img
@@ -2098,9 +2201,11 @@ static void uw_fe_setup(void)
     s_uw_stage = 0.0;
 }
 
+static volatile int s_stage_drew;       /* a stage drew in this frame (BO-222) */
 static void uw_stage_render(void)
 {
     s_uw_frame = s_uw_stage;
+    s_stage_drew = 1;
     /* display.score_board (scoreboard.c, BO-165): before the HUD is drawn. */
     bo3_score_board_render();
 }
@@ -2119,7 +2224,7 @@ static void hdr_mark(uint32_t tag)
      * switch marked, so the setting alone never gave the scene its light. */
     if (!nv2a_host_hdr())
         return;
-    dev = HD_M32(BO3_VA(0x35FB48, 0x35FE48));
+    dev = HD_M32(HR_D3D_PUSH);
     if (!dev)
         return;
     put = HD_M32(dev);
@@ -2128,6 +2233,62 @@ static void hdr_mark(uint32_t tag)
 }
 static void hdr_scene(void) { hdr_mark(1); }
 static void hdr_ui(void) { hdr_mark(0); }
+
+/* ---- graphics.texture_upscale before the GO (BO-272) ----------------------
+ *
+ * The toolkit's upscaler runs its jobs with a larger budget while nobody
+ * drives (nv2a_texup_set_loading): the track's textures are first drawn in
+ * the countdown, so a first visit's jobs fit there instead of the race's
+ * first minute. Told at every flip the title emits, from its own state:
+ *   LOADING   the game object's state (0x4D53B4) is not 5, its running
+ *             state: a load, a stage's set-up or hand-over (the loading
+ *             screen); 0 before the game object exists.
+ *   PRESTART  state 5 in a stage (its mode object, 0x4D5370 + 0x1B8, set;
+ *             0 in the front end) with player 1's car (0x73A1D0) before its
+ *             event phase 2 (+ 0x134C: 0 in the countdown of a Single Event
+ *             race, seen 2026-10-21; 1 on a rolling start; 2 from the GO,
+ *             3 finished; autopilot.c), for at most 30 s of it.
+ *   PLAY      everything else.
+ * Only an atomic in the toolkit changes; with texture upscale off nothing
+ * reads it. */
+void nv2a_texup_set_loading(int how);   /* toolkit nv2a_texup.h: 0 play, 1 prestart, 2 loading */
+
+static double s_tl_pre_ms;              /* when PRESTART began, 0: not in it */
+
+static void texup_loading_flip(void)
+{
+    uint32_t state, stage;
+    int how = 0, pre;
+
+    if (!g_xbox_mem_offset)
+        return;
+    state = HD_M32(HR_GAME_STATE);
+    stage = HD_M32(HR_STAGE);
+    pre = state == 5 && stage >= 0x10000u && stage < 0x08000000u && HD_M32(stage + 0x1B8u)
+       && HD_M32(HR_PLAYER_CAR + 0x134Cu) < 2;
+    if (state != 5 && state != 0) {
+        how = 2;
+    } else if (pre) {
+        double now = pace_ms();
+        if (!s_tl_pre_ms)
+            s_tl_pre_ms = now;
+        how = now - s_tl_pre_ms < 30000.0 ? 1 : 0;
+    }
+    if (!pre)
+        s_tl_pre_ms = 0;
+    {   /* RECOMP_DEBUG=texup_log: what it read, at each change */
+        static uint32_t last = 0xFFFFFFFFu;
+        uint32_t mode = stage >= 0x10000u && stage < 0x08000000u ? HD_M32(stage + 0x1B8u) : 0;
+        uint32_t key = (state & 0xFF) | (mode ? 0x100u : 0) | (HD_M32(HR_PLAYER_CAR + 0x134Cu) & 0xFF) << 12
+                     | (uint32_t)how << 24;
+        if (key != last && recomp_env(RENV_TEXUP_LOG))
+            fprintf(stderr, "[TEXUP] title state %u, stage %s, car phase %u: %s (flip %u)\n",
+                    state, mode ? "on" : "none", HD_M32(HR_PLAYER_CAR + 0x134Cu),
+                    how == 2 ? "loading" : how == 1 ? "prestart" : "play", s_uw_flips);
+        last = key;
+    }
+    nv2a_texup_set_loading(how);
+}
 
 static void uw_flip(void)
 {
@@ -2147,14 +2308,16 @@ static void uw_flip(void)
         fprintf(stderr, "UW: flip %u %s\n", n, a > 0.0f ? "wide" : "16:9");
     s_uw_ring[n % UW_RING] = a;
     s_uw_flips = n;
+    texup_loading_flip();
     bo3_score_board_flip();
     pace_log(n);
     /* The simulation steps this frame ran (the stepper's count, +0x2E20C:
      * see BO3_PACE_LOG), for the overlay's frame-time graph: a frame of two
      * steps moves the world twice as far (present_cadence.h, BO-115). */
     if (g_xbox_mem_offset)
-        xbox_PresentCadenceSteps(n, (int)HD_M32(BO3_VA(0x4D53AC, 0x4D56CC)));
+        xbox_PresentCadenceSteps(n, (int)HD_M32(HR_FRAME_STEPS));
     s_uw_frame = 0.0;
+    s_stage_drew = 0;
 }
 
 static double uw_frame_aspect(uint32_t flip)
@@ -2194,7 +2357,7 @@ static double hud_frame_aspect(void)
 static int uw_fe_owns_picture(void)
 {
     const uint8_t *m = (const uint8_t *)(uintptr_t)g_xbox_mem_offset;
-    uint32_t layers = *(const uint32_t *)(m + BO3_VA(0x557A20u, 0x557D40u) + 0x2Cu);
+    uint32_t layers = *(const uint32_t *)(m + HR_SCENE_FE + 0x2Cu);
     return layers && *(const uint32_t *)(m + layers + 8u) != 0;
 }
 
@@ -2209,6 +2372,271 @@ static double uw_fe_squeeze(void)
     return a > 0.0 ? s_base_aspect / a : 1.0;
 }
 
+/* ---- display.hud_fix in the front end (BO-222) ---------------------------
+ *
+ * The front-end scene (0x557A20: menus, loading screens, race intro, pause
+ * menu, results) is laid out in 640x480 like the HUD, and the anamorphic
+ * 16:9 picture stretches it 4/3 wide. With display.hud_fix its root is
+ * squeezed by (4/3)/base_aspect about x = 320 (config/patches.json,
+ * sub_001C17A0), so the content keeps its 4:3 shape in the middle; over a
+ * wide frame (display.ultrawide) that composes with fe_squeeze. The
+ * decoration that the title spans across the whole frame (the borders, the
+ * checkered strips, the header, the menu video, the loading picture, the
+ * highlight line, full-screen fades) is drawn where the title puts it
+ * instead, which is the whole picture again: one rule in the object draw
+ * (sub_001C6500), by geometry, not by element.
+ *
+ *   fe_scene      mark at sub_001C17A0 (the root sync, the first thing
+ *                 sub_001C67D0 does for a scene): edi is the scene drawn next.
+ *   fe_dx, fe_dw  read at the object draw's stores of the drawn x and width
+ *                 (ebx the object, its frame at +0x40): what to add. An
+ *                 object of the front-end scene whose box, taken back to the
+ *                 title's own columns (through the root's world and local
+ *                 x), reaches from the left edge to the right one (<= 0.5,
+ *                 >= 639.5) is drawn at those columns. One at least 400
+ *                 wide that reaches one edge only (the loading screen's tip
+ *                 bars, 140..640) gets that edge at the title's column and
+ *                 keeps the other where the squeeze puts it. Everything else
+ *                 (text, icons, the logo, panels) is left to the squeeze, and
+ *                 so is the one box across the frame that is not decoration:
+ *                 the selected line's brackets (render callback 0xFB900).
+ *   base_aspect   the title's picture (4/3 or 16/9): the root's factor.
+ *   stage_frame   1 while a stage drew the frame being built: the EA Trax
+ *                 pop-up keeps its place beside the race HUD then, and sits
+ *                 with the menu's squeezed content otherwise. */
+static volatile uint32_t s_fe_scene;    /* the 2D scene being drawn */
+
+static volatile uint32_t s_map_walk;    /* the map screen is to be looked for */
+
+static void fe_scene_mark(void)
+{
+    s_fe_scene = g_edi;
+    s_map_walk = 1;
+}
+
+static int fe_ok(uint32_t p)
+{
+    return p >= 0x10000u && p < 0x03FFFF00u && !(p & 3u);
+}
+
+/* ---- display.crashnav_map: the map screen with hud_fix (BO-222) ----------
+ *
+ * Crash Nav's Select Location (a region's map) is a picture of six tiles
+ * (render callback 0x1C1A60, 512x512 each, 1536x1024 in all) on a frame of
+ * its own, scaled to the 640 columns of the screen, with on that frame the
+ * route line (0x1C0790, a box from the map's corner to the route's far
+ * end), the crosshair lines through the chosen place (0x1C1930), the
+ * places' shields (0xD77A0, the chosen one drawn once more over the info
+ * box) and their NEW labels (0x5AC20); the info box beside the chosen place
+ * (plates 0xF9CE0, text 0x1C51A0, the medal 0x1C1A60, the count 0x1C5330)
+ * is on the root frame, placed in the title's columns from the place. The
+ * squeeze takes the frame with the root, so every part stays on the map;
+ * but a route box reaching 400 columns from the map's left edge met the
+ * decoration's one-edge rule, and the route was drawn from the screen's
+ * edge, over the frame beside the map (the owner's Alpine Expressway on
+ * the Deck). The map screen is told by its route object, and its parts
+ * never take that rule. The setting chooses its shape:
+ *
+ *   stretched  (default) the map is drawn at the title's own columns, like
+ *              the frame around it: tiles, route and crosshair across the
+ *              picture; the shields and labels at their places there but
+ *              at their 4:3 shape (a label moves with its nearest shield),
+ *              and the info box moved with the chosen place.
+ *   native     the map 4:3 with the rest of the menu: the squeeze alone.
+ *
+ * In both, what the title keeps beyond the screen's edges on this screen
+ * (a NEW label of the location list at column 740) stays there instead of
+ * showing in the columns the squeeze opens beside the 4:3 content. */
+#define MAP_ICONS 48
+static uint32_t s_map_frame;            /* the map's frame; 0: not the map screen */
+static int s_map_n;                     /* the shields: drawn centre, title-column shift */
+static double s_map_cx[MAP_ICONS], s_map_cy[MAP_ICONS], s_map_d[MAP_ICONS];
+static double s_map_box_d;              /* the info box's shift */
+
+/* An object of the root frame that is part of the info box: one of its
+ * callbacks, above the bottom panel (y < 416 in the root's 480 rows),
+ * inside the 4:3 columns and narrower than the decoration. */
+static int map_info_obj(uint32_t obj, double lo, double hi)
+{
+    uint32_t cb = HD_M32(obj + 0x44);
+    if (cb != HR_CB_2D_OBJECT && cb != HR_CB_2D_SCENE && cb != HR_CB_FE_OBJECT && cb != HR_CB_HUD)
+        return 0;
+    return HD_MF(obj + 12) < 416.0f && lo > 0.5 && hi < 639.5 && hi - lo < 400.0;
+}
+
+/* Find the map screen in the front-end scene (once a frame, at its first
+ * drawn object, when its frames are synced) and where its shields go. */
+static void map_walk(uint32_t root, double rwx, double rsx, double rlx, double rlsx)
+{
+    uint32_t sc = HR_SCENE_FE, la = HD_M32(sc + 0x2C), nl = HD_M32(sc + 0x30), l, n, fr;
+    int guard, i, j, sel = -1, nbox = 0;
+    double bx0 = 1e9, bx1 = -1e9, by0 = 1e9, by1 = -1e9;
+    double px[MAP_ICONS], py[MAP_ICONS];
+
+    s_map_frame = 0, s_map_n = 0, s_map_box_d = 0.0;
+    if (!fe_ok(la) || !nl || nl > 256)
+        return;
+    for (l = 0; l < nl && !s_map_frame; l++) {
+        if (HD_M32(la + l * 16) & 1u)           /* a hidden layer */
+            continue;
+        for (n = HD_M32(la + l * 16 + 8), guard = 0; fe_ok(n) && guard < 500; n = HD_M32(n), guard++)
+            if (HD_M32(n + 0x44) == HR_CB_OBJECT && fe_ok(HD_M32(n + 0x40))) {
+                s_map_frame = HD_M32(n + 0x40);
+                break;
+            }
+    }
+    if (!s_map_frame)
+        return;
+    for (l = 0; l < nl; l++) {
+        if (HD_M32(la + l * 16) & 1u)
+            continue;
+        for (n = HD_M32(la + l * 16 + 8), guard = 0; fe_ok(n) && guard < 500; n = HD_M32(n), guard++) {
+            uint32_t cb = HD_M32(n + 0x44);
+            float sx, sy, x, y, w, h;
+            double a, b, ta, tb;
+
+            fr = HD_M32(n + 0x40);
+            if (!fe_ok(fr))
+                continue;
+            sx = HD_MF(fr + 0x28), sy = HD_MF(fr + 0x2C);
+            x = HD_MF(n + 8), y = HD_MF(n + 12), w = HD_MF(n + 0x10), h = HD_MF(n + 0x14);
+            a = HD_MF(fr + 0x20) + (double)sx * x, b = a + (double)sx * w;
+            if (fr == s_map_frame && cb == HR_CB_CRASH_NAV && s_map_n < MAP_ICONS) {
+                double c = (a + b) / 2.0;
+                s_map_cx[s_map_n] = c;
+                s_map_cy[s_map_n] = HD_MF(fr + 0x24) + (double)sy * (y + h / 2.0f);
+                s_map_d[s_map_n] = (c - rwx) / rsx * rlsx + rlx - c;
+                px[s_map_n] = x, py[s_map_n] = y;
+                s_map_n++;
+            } else if (fr == root) {
+                ta = (a - rwx) / rsx * rlsx + rlx, tb = (b - rwx) / rsx * rlsx + rlx;
+                if (map_info_obj(n, ta < tb ? ta : tb, ta < tb ? tb : ta)) {
+                    double ya = HD_MF(fr + 0x24) + (double)sy * y, yb = ya + (double)sy * h;
+                    bx0 = fmin(bx0, fmin(a, b)), bx1 = fmax(bx1, fmax(a, b));
+                    by0 = fmin(by0, fmin(ya, yb)), by1 = fmax(by1, fmax(ya, yb));
+                    nbox++;
+                }
+            }
+        }
+    }
+    /* The info box goes with the chosen place: the shield drawn twice;
+     * else the shield nearest the box. */
+    for (i = 0; i < s_map_n && sel < 0; i++)
+        for (j = i + 1; j < s_map_n; j++)
+            if (px[i] == px[j] && py[i] == py[j]) {
+                sel = i;
+                break;
+            }
+    if (sel < 0 && nbox) {
+        double best = 1e18, cx = (bx0 + bx1) / 2.0, cy = (by0 + by1) / 2.0;
+        for (i = 0; i < s_map_n; i++) {
+            double ddx = s_map_cx[i] - cx, ddy = s_map_cy[i] - cy;
+            if (ddx * ddx + ddy * ddy < best)
+                best = ddx * ddx + ddy * ddy, sel = i;
+        }
+    }
+    if (sel >= 0)
+        s_map_box_d = s_map_d[sel];
+}
+
+/* The shift of the shield nearest (cx, cy), drawn columns and rows. */
+static double map_near_d(double cx, double cy)
+{
+    double best = 1e18, d = 0.0;
+    int i;
+    for (i = 0; i < s_map_n; i++) {
+        double ddx = s_map_cx[i] - cx, ddy = s_map_cy[i] - cy;
+        if (ddx * ddx + ddy * ddy < best)
+            best = ddx * ddx + ddy * ddy, d = s_map_d[i];
+    }
+    return d;
+}
+
+/* What to add to the drawn x (*dx) and width (*dw) of the object being
+ * drawn; 0 and 0 for one the squeeze is right for. */
+static void fe_decor(double *dx, double *dw)
+{
+    uint32_t obj = g_ebx, fr, root, cb;
+    float sx, x, w;
+    double rwx, rsx, rlx, rlsx, xa, xb, ta, tb, lo, hi, na, nb;
+    int left, right, a_lo;
+
+    *dx = *dw = 0.0;
+    if (s_fe_scene != HR_SCENE_FE || !g_xbox_mem_offset || !fe_ok(obj))
+        return;
+    cb = HD_M32(obj + 0x44);
+    /* A box across the frame that is not decoration: the selected menu
+     * line's brackets (sub_000FB900) sit beside its text, inside the box. */
+    if (cb == HR_CB_FRONT_END)
+        return;
+    fr = HD_M32(obj + 0x40);
+    root = HD_M32(HR_SCENE_FE + 0x14u);
+    if (!fe_ok(fr) || !fe_ok(root))
+        return;
+    rwx = HD_MF(root + 0x20), rsx = HD_MF(root + 0x28);
+    rlx = HD_MF(root), rlsx = HD_MF(root + 8);
+    if (!(fabs(rsx) > 1e-6) || rsx == rlsx)     /* not squeezed (4:3) */
+        return;
+    if (s_map_walk) {
+        s_map_walk = 0;
+        map_walk(root, rwx, rsx, rlx, rlsx);
+    }
+    /* As sub_001C6500 computes them (in float): x = frame x + scale * x. */
+    sx = HD_MF(fr + 0x28);
+    x = HD_MF(obj + 8) * sx;
+    x = x + HD_MF(fr + 0x20);
+    w = HD_MF(obj + 0x10) * sx;
+    xa = x, xb = (double)x + w;
+    /* In the title's own columns: the root's squeeze undone. */
+    ta = (xa - rwx) / rsx * rlsx + rlx;
+    tb = (xb - rwx) / rsx * rlsx + rlx;
+    a_lo = ta <= tb;
+    lo = a_lo ? ta : tb, hi = a_lo ? tb : ta;
+    if (!(lo == lo) || !(hi == hi))             /* NaN */
+        return;
+    if (s_map_frame) {
+        int stretched = !recomp_patch_on("display.crashnav_map", "native", 0);
+
+        if (hi <= 0.0 || lo >= 640.0) {         /* off the screen in 4:3: kept off */
+            *dx = ta - xa;
+            *dw = (tb - ta) - (xb - xa);
+            return;
+        }
+        if (fr == s_map_frame) {
+            if (!stretched)
+                return;
+            if (cb == HR_CB_CRASH_NAV || cb == HR_CB_NAV_MARK) {
+                /* A shield, or a label beside one: its place, its shape. */
+                float sy = HD_MF(fr + 0x2C);
+                double cy = HD_MF(fr + 0x24) + (double)sy * (HD_MF(obj + 12) + HD_MF(obj + 0x14) / 2.0f);
+                *dx = map_near_d((xa + xb) / 2.0, cy);
+                return;
+            }
+            *dx = ta - xa;                      /* the map itself */
+            *dw = (tb - ta) - (xb - xa);
+            return;
+        }
+        if (fr == root && map_info_obj(obj, lo, hi)) {
+            if (stretched)
+                *dx = s_map_box_d;
+            return;
+        }
+    }
+    left = lo <= 0.5, right = hi >= 639.5;
+    if (!(left && right) && !((left || right) && hi - lo >= 400.0))
+        return;
+    na = xa, nb = xb;
+    if (a_lo ? left : right) na = ta;
+    if (a_lo ? right : left) nb = tb;
+    *dx = na - xa;
+    *dw = (nb - na) - (xb - xa);
+}
+
+static double fe_dx(void) { double dx, dw; fe_decor(&dx, &dw); return dx; }
+static double fe_dw(void) { double dx, dw; fe_decor(&dx, &dw); return dw; }
+static double fe_base_aspect(void) { return s_base_aspect; }
+static double fe_stage_frame(void) { return s_stage_drew ? 1.0 : 0.0; }
+
 static void uw_init(void)
 {
     const char *v = recomp_env(RENV_DISPLAY_ULTRAWIDE);
@@ -2217,6 +2645,10 @@ static void uw_init(void)
     recomp_patch_set_var_fn("aspect", hud_aspect);
     recomp_patch_set_var_fn("frame_aspect", hud_frame_aspect);
     recomp_patch_set_var_fn("fe_squeeze", uw_fe_squeeze);
+    recomp_patch_set_var_fn("base_aspect", fe_base_aspect);
+    recomp_patch_set_var_fn("stage_frame", fe_stage_frame);
+    recomp_patch_set_var_fn("fe_dx", fe_dx);
+    recomp_patch_set_var_fn("fe_dw", fe_dw);
     nv2a_present_frame_aspect_fn(uw_frame_aspect);
     /* A new window opens at the chosen shape (the title's 16:9 otherwise). */
     if (v && s_base_aspect > 1.5) {
@@ -3088,6 +3520,9 @@ int main(int argc, char **argv)
             nv2a_present_note_output(ow, oh);
     }
     recomp_patch_enable("display.hud_fix", RENV_GFX_HUD_FIX);
+    /* BO-222: the Crash Nav map's shape under display.hud_fix (fe_decor):
+     * stretched (default) or native, display.crashnav_map. */
+    recomp_patch_enable("display.crashnav_map", RENV_DISPLAY_CRASHNAV_MAP);
     recomp_patch_enable("display.ultrawide", RENV_DISPLAY_ULTRAWIDE);
     /* BO-101: the title's own bloom and blur (radial while boosting,
      * directional in the crash and takedown cameras), on as shipped. At
@@ -3143,10 +3578,18 @@ int main(int argc, char **argv)
      * docs/draw-distance.md. */
     recomp_patch_set_var_fn("scenery_lod_scale", scenery_lod_scale);
     recomp_patch_enable("graphics.scenery_detail", RENV_GFX_SCENERY_DETAIL);
+    /* BO-241: where the marker over a rival changes from its arrow to its
+     * race position: farther and with a band at display.rival_marker =
+     * farther (RECOMP_GFX_RIVAL_MARKER); as shipped at "original".
+     * docs/rival-marker.md. */
+    recomp_patch_set_var_fn("rival_near", rival_near);
+    recomp_patch_set_var_fn("rival_far", rival_far);
+    recomp_patch_enable("display.rival_marker", RENV_GFX_RIVAL_MARKER);
     recomp_patch_on_mark("uw_stage_setup", uw_stage_setup);
     recomp_patch_on_mark("uw_fe_setup", uw_fe_setup);
     recomp_patch_on_mark("uw_stage_render", uw_stage_render);
     recomp_patch_on_mark("uw_flip", uw_flip);
+    recomp_patch_on_mark("fe_scene", fe_scene_mark);
     recomp_patch_on_mark("hdr_scene", hdr_scene);
     recomp_patch_on_mark("hdr_ui", hdr_ui);
     hud_dump_start();
@@ -3381,6 +3824,7 @@ int main(int argc, char **argv)
     bo3_led_signs_init();               /* the tunnel LED signs stay lit (BO-176) */
     bo3_hdr_sun_init();                 /* the sun's disc, a soft profile with HDR (BO-203) */
     bo3_hdr_gains_init();               /* the boost's light brighter with HDR (BO-110) */
+    bo3_texup_roads_init();             /* the road surfaces texture upscale leaves alone (BO-245) */
     if (bug_report) {
 #if defined(BO3_HAVE_BUG_REPORT)
         return host_bug_report_cli();
@@ -3445,6 +3889,7 @@ int main(int argc, char **argv)
  * what the start page found (missing data, the device's Vulkan version).
  * Returns the archive's path, or "!" and the reason. */
 #include <jni.h>
+#include "region_map.h"      /* the PAL twins of the addresses above */
 JNIEXPORT jstring JNICALL
 Java_io_github_xenophobentx_takedawn_ReportActivity_nativeBugReport(JNIEnv *env, jclass cls,
                                                                     jstring note)

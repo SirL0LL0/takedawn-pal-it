@@ -105,9 +105,16 @@ class ProtocolTest : public QObject {
     }
     QVERIFY(!messages::ExplainInstall("a-code-from-the-future").known);
     QVERIFY(messages::ExplainInstall("damaged-source", InPlace()).headline != messages::ExplainInstall("damaged-source").headline);
-    for (const char* code : {"program-missing", "program-start", "program-crashed", "program-failed", "program-killed", "program-no-result"}) {
+    for (const char* code : {"program-missing", "program-start", "program-crashed", "program-failed", "program-killed", "program-no-result",
+                              "program-entrypoint", "program-dll"}) {
       QVERIFY2(!messages::ExplainProgram(code).headline.isEmpty(), code);
     }
+    // BO-231 (GitHub #37): Windows' loader statuses are told apart from any other stop, and the
+    // entry-point one names the graphics driver.
+    QCOMPARE(messages::ProgramFailedCode(-1073741511), QString("program-entrypoint"));  // 0xC0000139
+    QCOMPARE(messages::ProgramFailedCode(-1073741515), QString("program-dll"));         // 0xC0000135
+    QCOMPARE(messages::ProgramFailedCode(1), QString("program-failed"));
+    QVERIFY(messages::ExplainProgram("program-entrypoint").advice.contains("Vulkan 1.3"));
     for (const char* code : {"cache-off", "no-game-data", "scene-failed", "cancelled", "game-failed"}) {
       QVERIFY2(!messages::ExplainShaders(code).advice.isEmpty(), code);
     }

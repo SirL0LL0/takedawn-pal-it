@@ -33,11 +33,13 @@ build, with Nahelam's PS2 symbol list as the guide to the names.
   `ref_x1` at the right). `vis_x0..vis_x1` are the frame columns the window
   shows of the picture as presented, `ref_x0..ref_x1` those a 4:3 picture
   shows in the same window (`nv2a_present_visible_x`, `_at`: the presenter's
-  own layout). The overscan crop shows 21..619 either way; the 16:10 fill on a
+  own layout). The overscan crop shows 21..619 either way; the overscan "Fill
+  height" (BO-235) shows the whole 0..640, like no overscan, and stretches the
+  picture 480/448 taller (the HUD's x layout does not see that); the 16:10 fill on a
   1280x800 panel shows 51..589 of the 16:9 picture and still 21..619 of a 4:3
   one, so the rectangle is -69.67..709.67 with the crop and -29.67..669.67 with
   that fill. The window's size is known from its creation; a headless run
-  uses the crop alone, or `BO3_HUD_OUTPUT=<w>x<h>`.
+  uses the overscan alone, or `BO3_HUD_OUTPUT=<w>x<h>`.
 - What sits on the root with absolute, full-width coordinates gets the whole
   frame's width and left edge: the letterbox bars and lines, the caption
   strip's background, the two-player viewport frames.
@@ -56,14 +58,53 @@ build, with Nahelam's PS2 symbol list as the guide to the names.
   The title itself shows the message cut by the right edge while it comes in
   and by the left while it goes (4:3: 6 frames, up to 48% of the text past
   the edge); that is its slide, not a defect.
-- The EA Trax pop-up is squeezed about the visible left edge, in menus too.
+- The EA Trax pop-up is squeezed about the visible left edge in a frame a
+  stage drew (beside the HUD), and about x = 320 in the front end, with the
+  menu it sits on (`stage_frame`).
+- The front-end scene (BO-222): its root is squeezed by `(4/3)/base_aspect`
+  about x = 320 (`base_aspect` is the title's own picture), so the menus, the
+  loading screens, the race intro, the pause menu and the results keep their
+  4:3 shape in the middle. Over a wide frame (`display.ultrawide`) this
+  composes with `fe_squeeze`, so the content is 4:3 there too.
+- Its decoration is drawn where the title puts it, which is the whole
+  picture. In the object draw (`sub_001C6500`, store patches of the drawn x
+  and width, host values `fe_dx` / `fe_dw`), an object of the front-end scene
+  whose box, taken back to the title's own columns, reaches from the left edge
+  to the right one is drawn at those columns: the borders, the checkered
+  strips, the header, the bottom panel, the menu video, the loading picture,
+  the LOADING strip and its lines, full-screen fades. An object at least 400
+  wide that reaches one edge gets that edge there and keeps the other where
+  the squeeze puts it (the loading screen's tip bars, 140..640). The one box
+  across the frame that is content, the selected line's brackets
+  (`sub_000FB900`), is left to the squeeze. The PS2 fix patches each element's
+  width and x; here it is one rule by geometry.
+- The front end's 3D (the Crash Nav globe, the garage) is the title's own,
+  already drawn for 16:9, and is not touched.
+- Crash Nav's Select Location map (`display.crashnav_map`, Display page row
+  "Crash Nav map", shown while Widescreen HUD is on; BO-222). The map is six
+  tiles (callback `0x1C1A60`) on a frame of its own with the route line
+  (`0x1C0790`), the crosshair (`0x1C1930`), the shields (`0xD77A0`) and their
+  NEW labels (`0x5AC20`); the info box beside the chosen place (`0xF9CE0`,
+  `0x1C51A0`, `0x1C1A60`, `0x1C5330`) is on the root frame. The screen is
+  told by its route object, and its parts never take the decoration rule
+  above (a route box 400 columns from the map's left edge took it, and the
+  route was drawn from the screen's edge over the frame: the Europe routes
+  Alpine Expressway and Continental Run). `stretched` (default): the map,
+  route and crosshair at the title's own columns, across the picture like
+  the frame around them; the shields and labels at their places there but at
+  their 4:3 shape (a label goes with its nearest shield), the info box moved
+  with the chosen place (the shield drawn twice). `native`: the squeeze
+  alone, the map 4:3 with the menu. In both, what the title keeps past the
+  screen's edges on this screen (the location list's NEW labels at column
+  740) stays there, out of the columns the squeeze opens. Live; nothing
+  changes in 4:3 or with Widescreen HUD off. Headless check:
+  Crash Nav > USA and Europe, each place in turn, at 16:9 (both options,
+  as shown at 1920x1080 and on a 1280x800 panel) and 4:3.
 - Latch: the rectangle sites sample the setting when a stage is set up; every
-  other site follows that sample. A change shows whole from the next race (or
-  a Restart). A `RECOMP_GFX_HUD_FIX` in the environment locks the setting.
+  other HUD site follows that sample. A change shows whole from the next race
+  (or a Restart). The front-end sites follow the setting as it is. A
+  `RECOMP_GFX_HUD_FIX` in the environment locks the setting.
 - In 4:3 every expression gives the title's own value.
-
-Not touched, by design: the front-end scene (menus, loading, race intro
-banner, pause menu, crash results stay as the title draws them).
 
 ## Verified on screen (Metal, headless frame dumps cut to the visible picture)
 
@@ -74,6 +115,18 @@ letterbox (plain bars, and the textured bars of `sub_00050A70`'s mode 3:
 (timer panels), Crash mode (Crashbreaker bar), countdown and GO, rival labels
 and triangle, EA Trax pop-up, two players one above the other, the live toggle
 with Restart, 4:3 with the fix on (scene dumps equal to fix off).
+
+Front end (BO-222; Vulkan on Linux, headless frame dumps, 16:9 and 21:9,
+`tools/headless/fe_scene.sh`): main menu with the EA Trax pop-up, Crash Nav,
+Select Mode, Select Options, Select Car, Junction Selection, the loading
+screens (tip bars to the edge), Crash Training, the race intro banner, the
+pause menu, the crash captions, Crash Results (and its Replay button), the
+race finish and RACE RESULTS. At 21:9 the menus and loading screens are 16:9
+frames (pillarboxed) and look as at 16:9; over the wide frames the header and
+the bottom panel span the 21:9 picture. The countdown and GO are the HUD's
+(above). Not reached: a replay screen with its own bars (the PS2 fix lists
+top and bottom replay bars; Crash Results' Replay keeps the results page up),
+and Get Ready, which none of these routes showed.
 
 ## Known unverified sites
 

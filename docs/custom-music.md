@@ -11,26 +11,73 @@ In the game: the settings overlay (Back+Start, F1, Cmd+,), Audio page,
 **Custom music folder**. A opens a folder list inside the overlay; a pad is
 enough (D-pad, A to open or choose, B to go back):
 
-- it starts on the places: the folder in use, Music, Home, Downloads and what
+- it starts on the places: the folder in use, the folder it is in (one step
+  up to a folder of soundtracks), Music, Home, Downloads and what
   is mounted (macOS: /Volumes; Linux and the Steam Deck: /run/media, the SD
   card among them, /media, /mnt; Windows: the drive letters), and "Computer: /";
 - in a folder: "Use this folder", "..", and its folders, each with the number
   of songs in it as the game reads it (three levels down)
   (counted in the background, up to 20 000 entries a row: "1234+ songs" when
   it stopped there);
-- "Turn custom music off" on the places, when a folder is set.
+- "Turn custom music off" on the places, when a folder is set;
+- in the folder in use the cursor starts on "..", and ".." (or B) from it, or
+  from the folder it is in, goes on up the disk instead of back to the places
+  (BO-243).
 
 The choice is saved as `audio.custom_music_dir` in settings.toml and used at
 once: the line under the row counts the files while the folder is read, then
 says how many soundtracks there are. Then, in the game: Driver Details >
 Settings > EA GAMES TRAX, X until the folder's name is the heading, A to
-confirm. The title remembers the choice in the profile. In a race the Black
-button skips to the next song, as with EA GAMES TRAX; Y in the screen
-switches random order.
+confirm. In a race the Black button skips to the next song, as with EA GAMES
+TRAX; Y in the screen switches random order. The original does not remember
+the choice: it starts on EA GAMES TRAX every run (see "Custom music at
+start" below for what the port does about that).
 
-One case waits for the next start: while one of the folder's soundtracks is
-the game's music, a change is saved and the row says so (choose EA GAMES TRAX
-in the game's screen first to change the folder without a restart).
+## Custom music at start (BO-230)
+
+With a folder set, the game starts on the custom soundtrack you last chose in
+Driver Details > Settings > EA GAMES TRAX, with no visit to that screen. The
+Audio page has the row **Custom music at start** under "Custom music folder"
+(`audio.custom_music_at_start`, on by default; greyed out while no folder is
+set; the row's hint says why).
+
+- The soundtrack you confirm in the game's screen (A) is remembered by name in
+  settings.toml as `audio.custom_music_soundtrack`. Confirming EA GAMES TRAX
+  remembers that: the key is then `""` and nothing is switched at start.
+  With no key (nothing chosen yet) the first soundtrack is used. A name the
+  folder no longer has gives the first soundtrack. The name is the
+  soundtrack's as the title lists it (cut at 31 characters, Latin-1).
+- At start, when the title's music manager has counted the folder's
+  soundtracks (the log's "the title now counts N soundtracks"), the title's
+  first music start is put on that soundtrack, once per run: the port sets
+  the title's chosen source, as the screen's confirm does, and the title's
+  own code starts the track. The EA GAMES TRAX screen, the Black-button skip
+  and random order work as they did. A choice made in the screen before that
+  point wins and is remembered. A folder chosen in the overlay while the game
+  runs is not switched to: that is not a start.
+- Off (`audio.custom_music_at_start = false`) or no folder: the title starts
+  on EA GAMES TRAX, as before.
+
+Whether the title remembers the choice (checked in its code, BO-230): it does
+not. The boot code clears the manager's chosen source (+0x568) to 0, EA GAMES
+TRAX (`sub_00153B00`, 0x153B55). The screen keeps its own candidate (X steps
+it, wrapping to 0), and A copies it to the manager (`sub_00084260`, 0x842A9:
+`[0x411B50] = candidate`) and stores the random-order byte (0x4AE1DA) and the
+EA GAMES TRAX per-track flags (0x4AE1A0..) in the profile. Nothing reads the
+source back but `sub_00155420`, the title's start of the music of the source
+chosen, which runs when the screen is left and at each music start.
+
+While one of the folder's soundtracks is the game's music (always so after
+custom music at start), a new folder is read at once and held back until the
+game runs again: the row says so while the overlay is open. Then, with a song
+of the old folder playing, the title's soundtrack becomes the new folder's one
+of the same name, else its first, the song playing goes on to its end, and the
+next song and the EA GAMES TRAX screen are the new folder's. With no song
+playing it happens at the title's next music start, the same way. A new
+folder with no music turns custom music off at the next music start. The
+switch is not a choice in the game's screen, so audio.custom_music_soundtrack
+stays as it was (BO-243; before it, the change waited for a restart, and with
+custom music at start on that was every change).
 
 Also: `--music-dir <folder>` for one run, or `RECOMP_AUDIO_MUSIC_DIR` (the
 row is then locked), or the key in settings.toml by hand:
@@ -74,21 +121,40 @@ clamp cut it flat: distortion. Two things stand in front of that.
 
 - **Custom music loudness** (Audio page, under "Custom music folder";
   `audio.custom_music_level`, `RECOMP_AUDIO_CUSTOM_LEVEL`): `off`, `quieter`,
-  `match` (default) or `louder`. A slow gain on the custom-soundtrack voices
-  only (the voices the custom player starts; EA GAMES TRAX, speech and
-  effects are not touched): a 3 s mean-square envelope of the song's two
-  channels, the gain that brings it to the level EA GAMES TRAX has in the
-  game (-20 LUFS in the game; one constant,
-  `APU_LEVEL_TARGET_DB` in the toolkit's `src/apu/apu_level.h`), limited to
-  -15 .. +6 dB, followed down in 0.3 s and up in 4 s, interpolated across each
-  0.67 ms mixer block, frozen in silence, under -40 dBFS and while the level
-  falls (a fade out). The 0.3 s reading less 2 dB counts as well, so a step
-  from quiet to loud is caught in a fraction of a second. A new song starts at
-  the gain the last one settled on; the very first song starts at -6 dB until
-  half a second of it has been heard. `quieter` and `louder` are 4 dB under
-  and over `match`. `off` is no code at all: your songs are mixed as the
-  title sends them. A song that was already playing when the setting
-  changed is followed from the next song.
+  `match` (default) or `louder`. A loudness chain, like a broadcast
+  loudness processor, on the custom-soundtrack voices only (the voices the
+  custom player starts; EA GAMES TRAX, speech and effects are not touched).
+  It works on the song's samples before the title's own volume, fades and
+  music slider (BO-246; the toolkit's `src/apu/apu_level.h`):
+  - the song's K-weighted loudness (ITU-R BS.1770, the meter LUFS come
+    from) over the last 3 s, read every 100 ms (a new song is first read
+    after 0.3 s);
+  - a gate: a reading under -50 LUFS, or more than 10 LU under the song's
+    running level, holds the gain, so silence, a quiet intro, a breakdown
+    or a fade out do not pull it around;
+  - the running level is the song's own integrated loudness so far (gated
+    like BS.1770's), started from the level the last song had. It settles
+    as the song goes on; a breakdown four minutes in hardly moves it. A
+    song that goes up a level for good (4 LU over for 2 s, the body after a
+    long quiet intro) is counted again from there, and a quiet song after a
+    loud one (10 to 20 LU under, louder than -24 LUFS, for 4 s at its
+    start) is taken as the new level;
+  - the gain brings that level to the target, -17 LUFS of the stream, which
+    is about -20 LUFS in the game, the average of EA GAMES TRAX
+    (`APU_LEVEL_TARGET_DB`); it moves with a 3 s time constant both ways,
+    -20 to +15 dB;
+  - a ceiling: the short-term output stays within 3 dB of the target. Over
+    it the gain comes down with a 0.2 s time constant, so a song that comes
+    in louder than the last one is down within about half a second;
+  - a gentle compressor after it (2:1, 6 dB soft knee, 8 dB over the
+    target, 10 ms attack, 150 ms release) only turns down what the slow
+    gain has not caught yet. On a modern master it takes 0.02 dB on
+    average.
+
+  `quieter` and `louder` are 4 dB under and over `match`. `off` is no code
+  at all: your songs are mixed as the title sends them. The first leveller
+  (BO-132: an unweighted 3 s envelope, -15 to +6 dB, 0.3 s down and 4 s up)
+  is still there for comparison: `RECOMP_AUDIO_CUSTOM_AGC=old`.
 - **A safety peak limiter** on the final output (also on the fold of a 5.1 title
   to a stereo device), always on (the
   toolkit's `src/apu/apu_limit.h`; `RECOMP_AUDIO_SAFETY_LIMITER=0` switches it
@@ -117,9 +183,36 @@ differ by 4 dB). A 5.1 title played on a stereo device folds its six feeds
 (L = FL + 0.707 C + 0.707 SL); the limiter stands after that fold too, on the
 16-bit sums, and the fold's gains are the game's own.
 
-`RECOMP_AUDIO_LEVEL_LOG=1` logs the envelope and the gain once a second.
+The loudness chain (BO-246), with `louder`, on a folder of nineties rave
+(60 songs, -18.5 to -7.2 LUFS as files, loudness ranges up to 14.5 LU) and
+modern techno (-9.3 to -6.7 LUFS):
+
+| | quiet old masters (-19 to -17 LUFS as files) | the others | spread |
+|---|---|---|---|
+| headless, six whole songs in the menu, the chain before the ceiling | -16.1 to -15.5 LUFS | -15.3, -15.2, -14.6 | 1.5 LU |
+| headless, the first minute of eight songs, quiet rave and loud techno in turn | -16.0 to -14.5 LUFS | -16.0 to -15.3 | 1.5 LU |
+| offline (`tools/level_sim`), all 60 songs, the chain | within 1 LU of the median | | 1.8 LU |
+| offline, all 60 songs, the first leveller | 0.5 to 1.4 LU under the median | | 2.6 LU |
+
+With the first leveller the quiet songs fell behind for two reasons. Its
++6 dB limit held for 30 to 47 % of such a song, and after a loud song its
+4 s rise (held while the level falls) left the first half minute 2.5 to 3
+LU under. Without the ceiling, the chain let a loud song that followed a
+quiet one play several dB too loud at its start (34 of the 60 songs more
+than 3 dB over the target for over 2 s, up to +8.5 LU, offline). With
+the ceiling, one of the 60 does, by at most 3.3 LU, and in the headless run
+no second of a song start was more than 3.9 dB over. In the menu the safety
+limiter touched 0.1 % of the samples, most of them in the loudest moments
+of one song. The chain costs about 6 ns a sample per custom voice (0.03 %
+of a core). In the same scene EA GAMES TRAX plays at -19.0 LUFS in the
+menu; `match` lands at about -19.5 and `louder` at about -15.5.
+
+`RECOMP_AUDIO_LEVEL_LOG=1` logs the readings, the gain, the compressor and the
+safety limiter's count once a second.
 `tools/headless/custom_level_scene.sh` plays copies of songs as a soundtrack
-in a headless run and keeps the WAV; `tools/headless/level_report.py` reads it.
+in a headless run and keeps the WAV; `tools/headless/level_report.py` reads it
+(`--songs`: song by song). The toolkit's `tools/level_sim` runs the same code
+offline over decoded songs.
 
 ## How it works
 
@@ -165,7 +258,14 @@ The port (`src/game/soundtrack.c`, the toolkit's `src/soundtrack`,
 
 Everything after the decoder is the title's: the stream and its mix bins
 (stereo music, as EA GAMES TRAX; 5.1 is untouched), the music volume of the
-Audio settings, pause, skip, shuffle, the choice saved in the profile.
+Audio settings, pause, skip, shuffle.
+
+4. `sub_00155420` (the title's start of the music of the chosen source) is
+   wrapped for custom music at start: the title's own code, preceded by two
+   reads of the manager's chosen source (+0x568): a value that is not the one
+   last seen is the player's confirm in the EA GAMES TRAX screen, and is
+   remembered by name; the first time, with the setting on and the manager
+   counting the folder, the source is set to the remembered soundtrack.
 
 A change while the game runs: the title counts the console's soundtracks
 once, when its music manager is set up during boot (sub_00152E00 ->
@@ -225,6 +325,9 @@ dead game, or no song of the folder opened where one must be.
 
 - `bo3_soundtrack_init` only gives the overlay its row; no folder is read,
   no path redirect is installed and no file is written.
+- `sub_00155420` (the fourth wrapped function) does its two reads only while
+  a library is in use (`s_on`); without a folder it calls the title's body
+  and nothing else.
 - The wrapped functions call the title's body and nothing else (the track
   start, sub_001537C0, is the one of the three the title reaches without a
   folder: it tests one flag and goes on). They are
@@ -243,8 +346,15 @@ inside that same spread.
 
 ## Checking it
 
-Unit tests: the toolkit's `tests/soundtrack` (scan, names, ST.DB, decoders)
-and `tests/overlay_settings` (the text setting).
+Unit tests: the toolkit's `tests/soundtrack` (scan, names, ST.DB, decoders,
+soundtrack name and lookup by name) and `tests/overlay_settings` (the text
+setting, the empty value kept for `audio.custom_music_soundtrack`).
+
+`tools/headless/custom_start_scene.sh` is the check for custom music at
+start: a made folder of three soundtracks, a scratch HOME and settings file;
+`STEP=menu` shows which soundtrack the title opened in the menu, `STEP=pick`
+chooses one in the EA GAMES TRAX screen and reads the settings file,
+`STEP=race` shows the first race's songs.
 
 A run: make a folder with a 1 kHz sine in it, start with
 `RECOMP_AUDIO_MUSIC_DIR=<folder> RECOMP_AUDIO_WAV=<file>` (scratch `HOME`,

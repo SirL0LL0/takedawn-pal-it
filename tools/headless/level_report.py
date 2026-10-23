@@ -8,6 +8,10 @@ scale, integrated loudness (EBU R128, ffmpeg's ebur128) and the true peak.
 The phase times are seconds into the WAV (phases.txt: the runtime marks the
 log once a second of audio, "[AUDIO-WAV] t=N"). --window s trims that many
 seconds off both ends of each phase (a menu change, a loading gap).
+--songs: the menu phase also song by song (BO-246), from where the log says
+each song was opened ("[SOUNDTRACK] song", placed by the "[AUDIO-WAV] t="
+line before it) to the next one, less the trim at both ends, and the last
+"[LEVEL]" line (the chain's gain and the safety limiter's count).
 
   tools/headless/level_report.py runs/cl_eatrax runs/cl_off runs/cl_match
 """
@@ -52,9 +56,27 @@ def phases(path):
         if m: ph[m.group(1)] = int(m.group(2))
     return ph
 
+def song_starts(log):
+    """(second of audio, song file name) of each song the log says was opened."""
+    t, out = 0, []
+    for line in open(log, errors='replace'):
+        m = re.search(r'\[AUDIO-WAV\] t=(\d+)', line)
+        if m: t = int(m.group(1)); continue
+        m = re.search(r'\[SOUNDTRACK\] song [0-9A-F]+: (.*) \(\d+ Hz', line)
+        if m: out.append((t, os.path.basename(m.group(1))))
+    return out
+
+def last_level(log):
+    last = ''
+    for line in open(log, errors='replace'):
+        if '[LEVEL]' in line: last = line.strip()
+    return last
+
 def main():
     args = sys.argv[1:]
     trim = 5.0
+    by_song = '--songs' in args
+    if by_song: args.remove('--songs')
     if '--window' in args:
         i = args.index('--window'); trim = float(args[i+1]); del args[i:i+2]
     for rd in args:
@@ -80,6 +102,19 @@ def main():
             lufs, tp = r128(seg, rate, os.path.join(rd, '.segment.raw'))
             print('  %-5s %6.1f-%6.1f s  peak %5.2f dBFS  samples at full scale %6d  >= -0.5 dBFS %6d  %.1f LUFS  true peak %.1f dBFS'
                   % (name, t0, t1, 20 * np.log10(max(peak, 1) / 32768.0), full, near, lufs, tp))
+        log = os.path.join(rd, 'log.txt')
+        if by_song and os.path.exists(log) and 'menu_end' in ph:
+            st = [x for x in song_starts(log) if x[0] < ph['menu_end']]
+            for k, (t0, name) in enumerate(st):
+                t1 = st[k + 1][0] if k + 1 < len(st) else ph['menu_end']
+                t0, t1 = t0 + trim, t1 - trim
+                seg = a[int(max(t0, 0) * rate):int(t1 * rate)]
+                if len(seg) < 3 * rate: continue
+                near = int(np.sum(np.abs(seg.astype(np.int32)) >= 30934))
+                lufs, tp = r128(seg, rate, os.path.join(rd, '.segment.raw'))
+                print('  song  %6.1f-%6.1f s  %6.1f LUFS  true peak %5.1f dBFS  >= -0.5 dBFS %6d  %s'
+                      % (t0, t1, lufs, tp, near, name))
+            print('  last level line:', last_level(log))
         try: os.remove(os.path.join(rd, '.segment.raw'))
         except OSError: pass
 

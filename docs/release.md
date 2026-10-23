@@ -99,6 +99,7 @@ Takedawn.app/Contents/
   Resources/Takedawn.icns    from assets/icon/takedawn-macos.svg
   Resources/qt.conf
   Resources/licenses/        THIRD_PARTY.txt, the licence texts, SOURCE.txt
+  Resources/shaders/upscale/ the texture upscaler's shader files (*.metal, VERSION, NOTICE.md, COPYING*, upstream/)
 ```
 
 - **No Homebrew on the player's Mac.** SDL is built here from the pinned
@@ -155,6 +156,8 @@ Takedawn\
   Qt6Core.dll, Qt6Gui.dll, Qt6Widgets.dll, libc++.dll, libunwind.dll
   platforms\qwindows.dll, styles\qmodernwindowsstyle.dll
   licenses\
+  shaders\upscale\    the texture upscaler's LGPL shader files (BO-245): *.comp, VERSION,
+                       NOTICE.md, COPYING*, upstream\; without them texture upscale is off
   README.txt
 ```
 
@@ -234,6 +237,7 @@ AppDir/
   usr/plugins/platforms/{libqxcb,libqwayland,libqoffscreen}.so
   usr/plugins/wayland-shell-integration, wayland-decoration-client, platformthemes
   usr/share/licenses/takedawn/
+  usr/share/takedawn/shaders/upscale/   the texture upscaler's shader files (*.comp, VERSION, NOTICE.md, COPYING*, upstream/)
 ```
 
 Three things are built in the container, the first two once (kept in
@@ -257,7 +261,10 @@ source archive and the image):
   itself (glibc, libstdc++, the Vulkan loader, X11, Wayland, libxkbcommon,
   FreeType, fontconfig, D-Bus), what a system may lack (carried, with its
   Debian copyright file), and anything else, which fails the build until
-  someone decides. Linked with `--as-needed`, the game needs neither OpenSSL
+  someone decides. libxkbcommon and libxkbcommon-x11 are also carried as a
+  pair in `usr/lib/xkb-fallback`, which AppRun uses only where the system
+  lacks one of them (the AppImage catalog's test runs on Ubuntu 22.04
+  minimal, which has no libxkbcommon-x11). Linked with `--as-needed`, the game needs neither OpenSSL
   nor libepoxy.
 
 The AppDir is packed with `mksquashfs` and the pinned static AppImage runtime

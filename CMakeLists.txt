@@ -128,6 +128,9 @@ if(NOT ANDROID)
     if(EXISTS "${XBOXRECOMP_DIR}/src/apu/apu_gp.c")
         add_subdirectory(tests/gp)
     endif()
+
+    # Custom music at start: when the switch is due (src/game/soundtrack_start.h, BO-230).
+    add_subdirectory(tests/start)
     # When a start-up failure may show a message box (src/game/fatal.c).
     add_subdirectory(tests/fatal)
 endif()

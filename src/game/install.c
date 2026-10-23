@@ -1103,7 +1103,9 @@ int bo3_install_main(int argc, char **argv)
  *   <files>/Burnout 3 Takedown/...   <files>/install.journal   <files>/.complete
  *
  * A folder put there by hand (adb push, a file manager: the way before this
- * page) is the source "folder": its files are checked where they lie. */
+ * page) is the source "folder": its files are checked where they lie. A
+ * folder chosen on the page (a document tree, BO-223) is read through
+ * SetupActivity.openSource, file by file, by the same installer. */
 #include <jni.h>
 
 static volatile int s_jni_cancel;
@@ -1112,6 +1114,8 @@ typedef struct {
     JNIEnv   *env;
     jobject   self;
     jmethodID progress;
+    jmethodID open_source;
+    jfieldID  src_size;
     time_t    last;
     int       pct;
 } JniInstall;
@@ -1181,16 +1185,37 @@ Java_io_github_xenophobentx_takedawn_SetupActivity_nativeCancel(JNIEnv *env, jcl
     s_jni_cancel = 1;
 }
 
-/* The install: from the descriptor of a disc image (fd >= 0), or from a
- * folder. Calls this.onProgress(double, String) as it goes. Returns
+/* A document tree (the folder picker's content:// URI) has no file names,
+ * so the installer asks Java for each file by its path on the disc:
+ * SetupActivity.openSource(rel) returns a descriptor it detached from the
+ * content resolver (-1: not in the tree, -2: not readable) and leaves the
+ * file's size in its srcSize field. */
+static int jni_source_open(void *ctx, const char *rel, uint64_t *size)
+{
+    JniInstall *j = (JniInstall *)ctx;
+    jstring s = (*j->env)->NewStringUTF(j->env, rel);
+    jint fd = (*j->env)->CallIntMethod(j->env, j->self, j->open_source, s);
+
+    (*j->env)->DeleteLocalRef(j->env, s);
+    if ((*j->env)->ExceptionCheck(j->env)) {
+        (*j->env)->ExceptionClear(j->env);
+        return -2;
+    }
+    if (fd >= 0)
+        *size = (uint64_t)(*j->env)->GetLongField(j->env, j->self, j->src_size);
+    return (int)fd;
+}
+
+/* The install: from the descriptor of a disc image (fd >= 0), from a folder
+ * by path, or (tree) from the document tree SetupActivity holds. Calls
+ * this.onProgress(double, String) as it goes. Returns
  * "<code word>\n<sentence>\n<copied> <checked in place> <kept> <already>". */
-JNIEXPORT jstring JNICALL
-Java_io_github_xenophobentx_takedawn_SetupActivity_nativeInstall(JNIEnv *env, jobject self,
-                                                                 jint fd, jstring jfolder,
-                                                                 jstring jroot)
+static jstring jni_install(JNIEnv *env, jobject self, jint fd, jstring jfolder, jstring jroot,
+                           int tree)
 {
     const char *root = (*env)->GetStringUTFChars(env, jroot, NULL);
     const char *folder = jfolder ? (*env)->GetStringUTFChars(env, jfolder, NULL) : NULL;
+    jclass cls = (*env)->GetObjectClass(env, self);
     JniInstall j;
     xr_install_opts o;
     xr_install_result r;
@@ -1200,12 +1225,17 @@ Java_io_github_xenophobentx_takedawn_SetupActivity_nativeInstall(JNIEnv *env, jo
     j.env = env;
     j.self = self;
     j.pct = -1;
-    j.progress = (*env)->GetMethodID(env, (*env)->GetObjectClass(env, self), "onProgress",
-                                     "(DLjava/lang/String;)V");
+    j.progress = (*env)->GetMethodID(env, cls, "onProgress", "(DLjava/lang/String;)V");
+    if (tree) {
+        j.open_source = (*env)->GetMethodID(env, cls, "openSource", "(Ljava/lang/String;)I");
+        j.src_size = (*env)->GetFieldID(env, cls, "srcSize", "J");
+    }
     s_jni_cancel = 0;
     memset(&o, 0, sizeof o);
     o.source = folder;
-    o.source_fd = folder ? -1 : (int)fd;
+    o.source_fd = folder || tree ? -1 : (int)fd;
+    if (tree && j.open_source && j.src_size)
+        o.source_open = jni_source_open;
     o.dest = root;
     o.subdir = GAME_DIR;
     o.manifest = &k_manifest;
@@ -1215,12 +1245,32 @@ Java_io_github_xenophobentx_takedawn_SetupActivity_nativeInstall(JNIEnv *env, jo
     o.ctx = &j;
     o.progress = j.progress ? jni_progress : NULL;
     o.cancelled = jni_cancelled;
-    xr_install(&o, &r);
-    snprintf(t, sizeof t, "%s\n%s\n%u %u %u %d", xr_install_code_name(r.code), r.message,
-             r.copied, r.verified, r.kept, r.already);
+    if (tree && !o.source_open) {
+        snprintf(t, sizeof t, "internal\nThe setup page cannot read folders.\n0 0 0 0");
+    } else {
+        xr_install(&o, &r);
+        snprintf(t, sizeof t, "%s\n%s\n%u %u %u %d", xr_install_code_name(r.code), r.message,
+                 r.copied, r.verified, r.kept, r.already);
+    }
     if (folder)
         (*env)->ReleaseStringUTFChars(env, jfolder, folder);
     (*env)->ReleaseStringUTFChars(env, jroot, root);
     return (*env)->NewStringUTF(env, t);
+}
+
+JNIEXPORT jstring JNICALL
+Java_io_github_xenophobentx_takedawn_SetupActivity_nativeInstall(JNIEnv *env, jobject self,
+                                                                 jint fd, jstring jfolder,
+                                                                 jstring jroot)
+{
+    return jni_install(env, self, fd, jfolder, jroot, 0);
+}
+
+/* The folder the player picked with ACTION_OPEN_DOCUMENT_TREE. */
+JNIEXPORT jstring JNICALL
+Java_io_github_xenophobentx_takedawn_SetupActivity_nativeInstallTree(JNIEnv *env, jobject self,
+                                                                     jstring jroot)
+{
+    return jni_install(env, self, -1, NULL, jroot, 1);
 }
 #endif /* __ANDROID__ */

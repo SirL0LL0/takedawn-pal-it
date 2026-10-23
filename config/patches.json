@@ -1,5 +1,5 @@
 {
-  "about": "Opt-in guest patches (tools.recomp --patches, regen.sh). After each listed load (or store) the generated code calls RECOMP_PATCH_U32 / RECOMP_PATCH_F32, which keeps the title's value unless the setting reads 'when' (src/game/main.c enables game.speed_units: RECOMP_SPEED_UNITS=kmh, BO-79; and display.hud_fix: RECOMP_GFX_HUD_FIX=1, BO-89; both on the overlay's Display page and in settings.toml). The display.hud_fix values are expressions of 'aspect' (16/9 or 4/3, the picture the title was set up for): W = 480*aspect is the 640x480 layout's width at the picture's true shape, (640 - W)/2 its left edge, s = (4/3)/aspect the squeeze that undoes the anamorphic stretch; 'vis_x0' / 'vis_x1' are the frame columns the window shows of the picture as presented (the presenter's overscan crop and 16:10 fill), 'ref_x0' / 'ref_x1' those a 4:3 picture shows in the same window: the HUD's margins are kept from the visible edges at what they are in 4:3. The arithmetic (layout width 480*aspect, offset (640 - width)/2, HUD origin 320*(1 - s)) is that of the PS2 widescreen fix: ThirteenAG/WidescreenFixesPack, source/Burnout3.PCSX2F.WidescreenFix (MIT licence); the Xbox sites were found in this build, with Nahelam's PS2 symbol list (PS2-Game-Mods, Burnout 3 Takedown/Research/SLES_525.85.txt) as the guide to the names. display.ultrawide (RECOMP_DISPLAY_ULTRAWIDE=21:9|32:9|window, BO-94): the camera's aspect and field-of-view factor and the marks that tell the host a stage is set up, drew a frame, and a frame ended; 'aspect' is then the stage's wide aspect, 'frame_aspect' the shown frame's, 'fe_squeeze' the factor that keeps the front-end scene's 16:9 shape over a wide frame. graphics.bloom and graphics.motion_blur (RECOMP_GFX_BLOOM, RECOMP_GFX_MOTION_BLUR, BO-101, strengths 0 to 1 in tenths since BO-212; overlay Graphics page): the title's own bloom and blur, full strength (1) as shipped; at \"0\" the title's own conditions for drawing them read false, between 0 and 1 the bloom's weight in the frame pass and the blur's opacity are times 'bloom_strength' / 'blur_strength' (docs/effects.md). graphics.vehicle_detail (RECOMP_GFX_VEHICLE_DETAIL=far|farthest, BO-112; overlay Graphics page): the distances at which the title swaps a vehicle's model for a simpler one, times 'vehicle_lod_scale' (2 or 4); as shipped at 'original' (docs/draw-distance.md). graphics.scenery_detail (RECOMP_GFX_SCENERY_DETAIL=far, BO-177; overlay Graphics page): the distance at which a track prop with two models (the pine trees above all) swaps its detailed model for its simple one, times 'scenery_lod_scale'; as shipped at 'original' (docs/draw-distance.md). graphics.crash_60fps (RECOMP_GFX_CRASH_60FPS=1, BO-111; overlay Graphics page): the title's 30 Hz phases, the crash and takedown cameras, at 60: where a one-player stage's update chooses the rate, its 'a crash camera is on' byte reads 0 and the title takes its own full-rate path (docs/crash60.md); off as shipped. graphics.split_60fps (RECOMP_GFX_SPLIT_60FPS=1, BO-116; overlay Graphics page): two-player split screen, which the title runs at its half rate from the stage's set-up to its end, at 60: the request the set-up stores is stored as 0 (docs/split-screen.md); off as shipped. audio.split_music (RECOMP_AUDIO_SPLIT_MUSIC=1, BO-116; overlay Audio page): the title's music manager keeps EA GAMES TRAX silent while more than one player plays; where it compares the player count for that, the count reads 1 (docs/split-screen.md); off as shipped, and off the audio path is the title's own. game.race_clock (RECOMP_GAME_RACE_CLOCK=1, BO-159; overlay Graphics page): a one-player stage starts its simulation stepper in the mode that runs one step a frame whatever the time, and switches to its wall-clock mode only at the end of the first crash camera; the start stores the wall-clock mode instead, so a host below 60 keeps real time from the start (docs/race-clock.md); off as shipped.",
+  "about": "Opt-in guest patches (tools.recomp --patches, regen.sh). After each listed load (or store) the generated code calls RECOMP_PATCH_U32 / RECOMP_PATCH_F32, which keeps the title's value unless the setting reads 'when' (src/game/main.c enables game.speed_units: RECOMP_SPEED_UNITS=kmh, BO-79; and display.hud_fix: RECOMP_GFX_HUD_FIX=1, BO-89; both on the overlay's Display page and in settings.toml). The display.hud_fix values are expressions of 'aspect' (16/9 or 4/3, the picture the title was set up for): W = 480*aspect is the 640x480 layout's width at the picture's true shape, (640 - W)/2 its left edge, s = (4/3)/aspect the squeeze that undoes the anamorphic stretch (the front-end scene's: (4/3)/base_aspect, the title's own picture, with the full-frame decoration drawn where the title puts it: fe_dx / fe_dw, BO-222); 'vis_x0' / 'vis_x1' are the frame columns the window shows of the picture as presented (the presenter's overscan crop and 16:10 fill), 'ref_x0' / 'ref_x1' those a 4:3 picture shows in the same window: the HUD's margins are kept from the visible edges at what they are in 4:3. The arithmetic (layout width 480*aspect, offset (640 - width)/2, HUD origin 320*(1 - s)) is that of the PS2 widescreen fix: ThirteenAG/WidescreenFixesPack, source/Burnout3.PCSX2F.WidescreenFix (MIT licence); the Xbox sites were found in this build, with Nahelam's PS2 symbol list (PS2-Game-Mods, Burnout 3 Takedown/Research/SLES_525.85.txt) as the guide to the names. display.ultrawide (RECOMP_DISPLAY_ULTRAWIDE=21:9|32:9|window, BO-94): the camera's aspect and field-of-view factor and the marks that tell the host a stage is set up, drew a frame, and a frame ended; 'aspect' is then the stage's wide aspect, 'frame_aspect' the shown frame's, 'fe_squeeze' the factor that keeps the front-end scene's 16:9 shape over a wide frame. graphics.bloom and graphics.motion_blur (RECOMP_GFX_BLOOM, RECOMP_GFX_MOTION_BLUR, BO-101, strengths 0 to 1 in tenths since BO-212; overlay Graphics page): the title's own bloom and blur, full strength (1) as shipped; at \"0\" the title's own conditions for drawing them read false, between 0 and 1 the bloom's weight in the frame pass and the blur's opacity are times 'bloom_strength' / 'blur_strength' (docs/effects.md). graphics.vehicle_detail (RECOMP_GFX_VEHICLE_DETAIL=far|farthest, BO-112; overlay Graphics page): the distances at which the title swaps a vehicle's model for a simpler one, times 'vehicle_lod_scale' (2 or 4); as shipped at 'original' (docs/draw-distance.md). graphics.scenery_detail (RECOMP_GFX_SCENERY_DETAIL=far, BO-177; overlay Graphics page): the distance at which a track prop with two models (the pine trees above all) swaps its detailed model for its simple one, times 'scenery_lod_scale'; as shipped at 'original' (docs/draw-distance.md). graphics.crash_60fps (RECOMP_GFX_CRASH_60FPS=1, BO-111; overlay Graphics page): the title's 30 Hz phases, the crash and takedown cameras, at 60: where a one-player stage's update chooses the rate, its 'a crash camera is on' byte reads 0 and the title takes its own full-rate path (docs/crash60.md); off as shipped. graphics.split_60fps (RECOMP_GFX_SPLIT_60FPS=1, BO-116; overlay Graphics page): two-player split screen, which the title runs at its half rate from the stage's set-up to its end, at 60: the request the set-up stores is stored as 0 (docs/split-screen.md); off as shipped. audio.split_music (RECOMP_AUDIO_SPLIT_MUSIC=1, BO-116; overlay Audio page): the title's music manager keeps EA GAMES TRAX silent while more than one player plays; where it compares the player count for that, the count reads 1 (docs/split-screen.md); off as shipped, and off the audio path is the title's own. display.rival_marker (RECOMP_GFX_RIVAL_MARKER=farther, BO-241; overlay Display page): where the marker over a rival changes from its arrow to its race position, 35 checked every 30 steps as shipped; at farther the position below rival_near (60), the arrow past rival_far (75), checked every step (docs/rival-marker.md). game.race_clock (RECOMP_GAME_RACE_CLOCK=1, BO-159; overlay Graphics page): a one-player stage starts its simulation stepper in the mode that runs one step a frame whatever the time, and switches to its wall-clock mode only at the end of the first crash camera; the start stores the wall-clock mode instead, so a host below 60 keeps real time from the start (docs/race-clock.md); off as shipped.",
   "patches": [
     {
       "va": "0x00059BF7",
@@ -73,7 +73,7 @@
           "0x0054F984"
         ]
       },
-      "note": "sub_001C17A0, the 2D scene's root sync (PS2 CGt2dScene::Render's CGt2dFrame::Sync of the root, with the identity space): copies the root frame's local position to its world position (x here), then syncs the children (sub_001C1670: world = parent origin + parent scale * local). Three scenes use it; edi is the scene, and the patch is for the two HUD scenes only (CB3HUDManager at 0x54F900, one CB3HUD of 0x70 bytes per player from +0x10, its CGt2dScene at +4: 0x54F914, 0x54F984; rendered by sub_000536C0). The front-end scene (0x557A20: menus, loading screen, race intro, results) keeps its root, and the EA Trax scene (0x45BAD0) its origin. Origin x = 320*(1 - s): with the scale below, the HUD's 2D space is squeezed by s about the screen centre. PS2 counterpart: hudOrigin, written to the two HUD frames (0x6682B0, 0x669B30). Latch use: follows the choice the layout rectangle was built with."
+      "note": "sub_001C17A0, the 2D scene's root sync (PS2 CGt2dScene::Render's CGt2dFrame::Sync of the root, with the identity space): copies the root frame's local position to its world position (x here), then syncs the children (sub_001C1670: world = parent origin + parent scale * local). Three scenes use it; edi is the scene, and the patch is for the two HUD scenes only (CB3HUDManager at 0x54F900, one CB3HUD of 0x70 bytes per player from +0x10, its CGt2dScene at +4: 0x54F914, 0x54F984; rendered by sub_000536C0). The front-end scene (0x557A20: menus, loading screen, race intro, results) and the EA Trax scene (0x45BAD0) have patches of their own at this site (below). Origin x = 320*(1 - s): with the scale below, the HUD's 2D space is squeezed by s about the screen centre. PS2 counterpart: hudOrigin, written to the two HUD frames (0x6682B0, 0x669B30). Latch use: follows the choice the layout rectangle was built with."
     },
     {
       "va": "0x001C17A3",
@@ -81,14 +81,14 @@
       "setting": "display.hud_fix",
       "when": "1",
       "latch": "use",
-      "expr": "loaded + vis_x0 - ref_x0 * (4 / 3) / frame_aspect",
+      "expr": "loaded + stage_frame * (vis_x0 - ref_x0 * (4 / 3) / frame_aspect) + (1 - stage_frame) * 320 * (1 - (4 / 3) / frame_aspect)",
       "if": {
         "reg": "edi",
         "in": [
           "0x0045BAD0"
         ]
       },
-      "note": "sub_001C17A0 again, for the EA Trax scene (0x45BAD0): its root's origin, so that with the scale below the song pop-up (at x = 26) is as far from the visible left edge as in 4:3: origin = vis_x0 - s*ref_x0."
+      "note": "sub_001C17A0 again, for the EA Trax scene (0x45BAD0): its root's origin. In a frame a stage drew (stage_frame 1: the race, its pause menu) the song pop-up (at x = 26) is as far from the visible left edge as in 4:3, beside the HUD: origin = vis_x0 - s*ref_x0. In the front end (stage_frame 0: menus, loading screens) it is squeezed about x = 320 like the menu it sits in (BO-222): origin = 320*(1 - s)."
     },
     {
       "va": "0x001C17AE",
@@ -120,6 +120,56 @@
         ]
       },
       "note": "sub_001C17A0: the same x scale for the EA Trax scene (0x45BAD0, rendered by sub_0002EB50, which sets this root's scale to screen size / 640x480 every frame; its one object is the song pop-up, sub_0002DF00, PS2 CB3EATrax2dObject, at x = 26): with the origin above the pop-up keeps its shape and its distance from the visible left edge. It is squeezed in the menus too: one pop-up, one shape, and in a race it sits beside the HUD. frame_aspect is the shape the frame is shown at (the title's own outside a wide race), so the pop-up is right over a menu too."
+    },
+    {
+      "va": "0x001C17A0",
+      "kind": "mark",
+      "name": "fe_scene",
+      "note": "BO-222: sub_001C17A0, the root sync, the first thing sub_001C67D0 (a 2D scene's render) does: edi is the scene whose objects sub_001C6500 draws next. src/game/main.c keeps it for fe_dx / fe_dw (below). A mark changes nothing in the guest."
+    },
+    {
+      "va": "0x001C17A3",
+      "kind": "load_f32",
+      "setting": "display.hud_fix",
+      "when": "1",
+      "expr": "loaded * (4 / 3) / base_aspect + 320 * (1 - (4 / 3) / base_aspect)",
+      "if": {
+        "reg": "edi",
+        "in": [
+          "0x00557A20"
+        ]
+      },
+      "note": "BO-222: sub_001C17A0 for the front-end scene (0x557A20: menus, loading screens, race intro, pause menu, results): its root's origin x, squeezed with the scale below by s = (4/3)/base_aspect about x = 320 (0.75 in the title's 16:9, 1 in 4:3), so the menus keep their 4:3 shape in the middle of the picture. Written as a squeeze of whatever the root is (origin*s + 320*(1 - s)), so over a wide frame it composes with display.ultrawide's fe_squeeze at this site, in either order: the content is 4:3 there too. No latch: the front end follows the setting as it is. PS2 counterpart: the menu's x and width (80, 480) the PS2 fix writes at 0x30D7E8 / 0x30D834."
+    },
+    {
+      "va": "0x001C17AE",
+      "kind": "load_f32",
+      "setting": "display.hud_fix",
+      "when": "1",
+      "expr": "loaded * (4 / 3) / base_aspect",
+      "if": {
+        "reg": "edi",
+        "in": [
+          "0x00557A20"
+        ]
+      },
+      "note": "BO-222: sub_001C17A0: the front-end scene's root x scale, times s = (4/3)/base_aspect."
+    },
+    {
+      "va": "0x001C65AD",
+      "kind": "store_f32",
+      "setting": "display.hud_fix",
+      "when": "1",
+      "expr": "loaded + fe_dx",
+      "note": "BO-222: sub_001C6500, a layer's object draw (called by sub_001C67D0 only): the drawn x (frame world x + world scale * object x, at esp+0x70 of the rectangle the render callback [ebx+0x44] gets), ebx the object. With the front-end root squeezed, the title's decoration that spans the frame (borders, checkered strips, header, the menu video, the loading picture, the highlight line, fades) would shrink to the middle 3/4; fe_dx (src/game/main.c) puts an object of the front-end scene whose box, in the title's own columns, reaches both edges back at those columns (the whole picture), and one at least 400 wide that reaches one edge with that edge there. 0 for every other object and scene. PS2 counterpart: the widths and x the PS2 fix writes per element (borders, checkerboards, loading background, replay bars); here one rule by geometry."
+    },
+    {
+      "va": "0x001C65DD",
+      "kind": "store_f32",
+      "setting": "display.hud_fix",
+      "when": "1",
+      "expr": "loaded + fe_dw",
+      "note": "BO-222: sub_001C6500: the drawn width (world scale * object width, esp+0x78), with fe_dw the change that goes with fe_dx."
     },
     {
       "va": "0x0001A08F",
@@ -509,6 +559,38 @@
       "latch": "use",
       "expr": "f32[esp + 0x30] + (loaded - f32[esp + 0x30]) * (4 / 3) / aspect",
       "note": "sub_0018F060: that text's x: squeezed about the projected point, x' = px + s*(x - px), so its middle stays where the title puts it relative to the car. Not exercised."
+    },
+    {
+      "va": "0x0018F21E",
+      "kind": "load_f32",
+      "setting": "display.rival_marker",
+      "when": "farther",
+      "expr": "rival_near",
+      "note": "BO-241, sub_0018F060: the marker over a rival changes from its arrow (slot state 0) to its race position (1) when the point's view depth is below the distance loaded here, 35.0 (0x3B175C, shared with other code), as shipped. At 'farther' the distance is rival_near (src/game/main.c, 60): the position shows from farther away. docs/rival-marker.md."
+    },
+    {
+      "va": "0x0018F230",
+      "kind": "cmp_u32",
+      "setting": "display.rival_marker",
+      "when": "farther",
+      "value": 1,
+      "note": "sub_0018F060: the change to the position is taken only while the marker object's counter (+0x18, 0..29, advanced once a step by sub_0018E890) is 1: once every 30 steps, so up to half a second late. At 'farther' the counter reads 1: checked every step, the two distances apart keep it from flipping."
+    },
+    {
+      "va": "0x0018F244",
+      "kind": "cmp_f32",
+      "setting": "display.rival_marker",
+      "when": "farther",
+      "expr": "rival_far",
+      "note": "sub_0018F060: back from the position to the arrow when the depth is above 35.0 (comiss with 0x3B175C), as shipped. At 'farther' above rival_far (75): a band of 60..75 where the marker keeps its look."
+    },
+    {
+      "va": "0x0018F252",
+      "kind": "cmp_u32",
+      "setting": "display.rival_marker",
+      "when": "farther",
+      "value": 1,
+      "note": "sub_0018F060: the same counter gate for the way back to the arrow; at 'farther' every step."
     },
     {
       "va": "0x0018FDAD",

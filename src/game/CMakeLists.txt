@@ -38,6 +38,7 @@ if(ANDROID)
         dsound_notify.c
         soundbank.c
         hirefresh.c
+        hraudit.c
     mixer.c
     gp_image.c
     pcmanifest.c
@@ -67,6 +68,7 @@ add_executable(burnout3
     dsound_notify.c
     soundbank.c
     hirefresh.c
+    hraudit.c
     mixer.c
     gp_image.c
     pcmanifest.c

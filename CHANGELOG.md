@@ -4,6 +4,45 @@ What changed in each release of Takedawn, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Major releases carry
 a codename, a song title from the game's soundtrack.
 
+## 0.2.1 "Hot Night Crash"
+
+Saves and settings from 0.2.0 carry over.
+
+### Added
+
+- High refresh rate (Graphics): draws at the display's refresh rate (120, 144 Hz and faster) while the game keeps its 60 steps a second. Cars and the camera are drawn between the steps. Off by default. Menus and split screen stay at the game's own rate, and so do crash cameras unless 60 fps crash cameras is on. It adds up to one 60 Hz step of delay. High refresh needs a fast machine. On the Steam Deck at 90 Hz, don't expect a steady 90 fps: there are small dips in heavy scenes, which we're working on smoothing out. High refresh is experimental. If something looks wrong with it on (a car, the camera, the HUD or an effect), turn it off to check, and open an issue with a bug report (Advanced > Create bug report). Details in docs/high-refresh.md. Started by Naitrate (GitHub #33).
+  - Sparks keep the same length at any refresh rate.
+  - The HUD animations, the flash at the end of a race, the race audio, the game's random numbers and the time played in your profile keep the game's speed at any refresh rate.
+- Texture upscale (Graphics): Off, FSRCNNX or NNEDI3. It sharpens the world's textures on the graphics card while you play and keeps the results on disk, so the next race has them at once. Off by default. Scale 2x or 4x (a Steam Deck gets 2x only). Cut-outs such as fences and trees keep the game's own edges, and road surfaces stay as they are unless "Upscale road surfaces" is on. On Mac, Windows, Linux and Steam Deck, not Android. On Windows it held 120 Hz in tests on an RX 9060 XT. The shader files are LGPL-3.0 and listed in THIRD_PARTY_NOTICES.md.
+- Upscale while loading (Graphics, on by default): does most of the sharpening during the loading screen and the countdown, so the first race on a track hitches less. It adds no load time.
+- Rival marker switch (Display): Original or Farther. Farther shows the race position from 60 m and the arrow again past 75 m, checked every frame, so the marker changes earlier and no longer flips back and forth.
+- Overscan: Fill height. It drops only the black border at the top and bottom and stretches the picture to the full height, about 7% taller. The sides stay (GitHub #41).
+- Crash Nav map (Display): Full width or 4:3. It applies with Widescreen HUD on in 16:9. Full width is the default.
+- Custom music at start (Audio, on by default): with a music folder set, the game starts on the custom soundtrack you last chose in EA GAMES TRAX, without a visit to that screen.
+- Android setup also installs from an extracted game folder (GitHub #23).
+- The mouse cursor hides after 2.5 seconds without movement and when you press a key or a controller button (jillsandwich1998).
+
+### Changed
+
+- Widescreen HUD now also covers the menus, loading screens, pause menu and results: their content stays 4:3 in the middle and the decoration spans the screen.
+- Mac HDR: levels are in nits as on the Steam Deck, and the peak comes from what macOS gives the app.
+- Custom music loudness: quiet old songs with a wide dynamic range now reach the level of the game's music, and a new song no longer starts too loud.
+- Custom music: the folder picker offers the folder you are in and a way one level up. A folder you change while a custom soundtrack plays takes over from the next song, with no restart.
+- Mac: frames reach the display from a thread of their own, no longer waiting for the window's event loop. Button press to picture was about 17 ms shorter on the built-in display.
+- Frame pacing Smooth works only when the display refreshes near 60 Hz. At other rates it acts like Low latency.
+- Windows: the game's threads are no longer tied to one CPU core. Drifting through corners at 120 Hz stutters about half as often (measured on a Ryzen 7 5800X).
+
+### Fixed
+
+- The LED words on the warning signs over the road (Silver Lake and other US tracks) no longer show through the back of the sign. They read mirrored at a distance, flickered closer in, and then vanished (GitHub #53).
+- A car's reflection showed no sky on King of the Road, near the steel bridge. Texels with alpha 0 are now discarded as on the Xbox (GitHub #27).
+- Steam Deck: with Smooth, the game could drop to 45 fps after a long session and stay there until you switched to Low latency.
+- Windows and Linux load Vulkan when the game starts. An old Vulkan loader no longer stops the program before it opens ("entry point vkCmdBeginRendering could not be located"). Without Vulkan 1.3 the game and the setup window say to update the graphics driver (GitHub #37).
+- Linux and Steam Deck: a crash or hang at the start of a loading screen with a custom soundtrack (GitHub #17).
+- Android: the setup could not create the game's folder on some phones, where the system hides the Android/data folder (GitHub #36).
+- The folder picker in the settings could freeze the whole game when it reached a slow network share or one with many files. It no longer waits on the folder scan, and network shares are listed but not scanned.
+- Linux: the AppImage's setup window did not open on systems without libxkbcommon-x11. The AppImage now brings its own copy for those systems.
+
 ## 0.2.0 "Hot Night Crash"
 
 Saves and settings from 0.1.1 carry over.

@@ -38,6 +38,15 @@ rm -rf "$A"
 mkdir -p "$A/usr/bin" "$A/usr/lib" "$A/usr/share/applications" \
          "$A/usr/share/icons/hicolor/256x256/apps" "$A/usr/share/licenses/takedawn"
 cp "$B/bin/takedawn" "$A/usr/bin/takedawn"
+# BO-245: graphics.texture_upscale's shader files (LGPL-3.0-or-later, loaded
+# at runtime from usr/share/takedawn/shaders/upscale; their NOTICE.md says
+# where they come from and how to replace them).
+mkdir -p "$A/usr/share/takedawn/shaders/upscale"
+for f in /src/toolkit/third_party/upscale_shaders/*.comp /src/toolkit/third_party/upscale_shaders/VERSION \
+         /src/toolkit/third_party/upscale_shaders/NOTICE.md /src/toolkit/third_party/upscale_shaders/COPYING*; do
+    cp "$f" "$A/usr/share/takedawn/shaders/upscale/"
+done
+cp -R /src/toolkit/third_party/upscale_shaders/upstream "$A/usr/share/takedawn/shaders/upscale/"
 
 # Never carried: what every system has and must match its own kernel, drivers
 # and display server. (The Wayland client libraries are the compositor's side
@@ -129,6 +138,25 @@ if [ -d /qt/lib ]; then
         done
     done
     closure "$A/usr/bin/takedawn-setup" $(find "$A/usr/plugins" -name '*.so')
+    # libxkbcommon and libxkbcommon-x11 as a fallback pair, in usr/lib/xkb-fallback
+    # and not in usr/lib: AppRun puts them on the path only on a system that
+    # lacks one of the two (the AppImage catalog's test, Ubuntu 22.04 minimal,
+    # has libxkbcommon0 but not libxkbcommon-x11-0, and the xcb plugin did not
+    # load). Where the system has both, its own pair is used, as before: it
+    # reads the system's keyboard layouts. Always the pair: -x11 is built
+    # against its own libxkbcommon's internals and must not meet another one.
+    mkdir -p "$A/usr/lib/xkb-fallback"
+    for l in libxkbcommon.so.0 libxkbcommon-x11.so.0; do
+        p=/usr/lib/x86_64-linux-gnu/$l
+        [ -f "$p" ] || { echo "the image has no $l" >&2; exit 1; }
+        cp -L "$p" "$A/usr/lib/xkb-fallback/$l"
+        pkg=$(dpkg -S "$(readlink -f "$p")" 2>/dev/null | head -1 | cut -d: -f1 || true)
+        echo "xkb-fallback/$l ${pkg:-?} $(dpkg-query -W -f='${Version}\n' "${pkg:-none}" 2>/dev/null | head -n 1)" >> /out/carried.txt
+        if [ -n "$pkg" ] && [ -f "/usr/share/doc/$pkg/copyright" ]; then
+            cp "/usr/share/doc/$pkg/copyright" "$A/usr/share/licenses/takedawn/$pkg-copyright.txt"
+        fi
+    done
+    closure "$A/usr/lib/xkb-fallback/libxkbcommon-x11.so.0"
     echo "setup window: Qt $(cat /stage/qt-version), $(find "$A/usr/plugins" -name '*.so' | wc -l) plugins"
 fi
 if [ -s /out/unknown.txt ]; then

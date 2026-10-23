@@ -47,6 +47,11 @@ Explained ExplainInstall(const QString& code, const InstallFacts& facts = {});
 // ended without an answer ("program-missing", "program-start", "program-crashed",
 // "program-killed", "program-no-result").
 Explained ExplainProgram(const QString& code);
+// The code for a program that ended before it said anything: Windows' loader
+// stops a program whose imports it cannot satisfy with these statuses
+// (STATUS_ENTRYPOINT_NOT_FOUND, STATUS_DLL_NOT_FOUND), and the status says
+// more than "failed". Anything else is "program-failed".
+QString ProgramFailedCode(int exit_code);
 // The optional shader build did not work: a warning, never a failed install.
 Explained ExplainShaders(const QString& code);
 // The graphics preparation (and so the game) found no graphics device it can use and runs

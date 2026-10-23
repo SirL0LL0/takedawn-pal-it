@@ -25,6 +25,9 @@ the title's own values, through `config/patches.json`.
   frame is 16:9, the race's first is wide (checked with every flip dumped).
 - **The front-end scene over a wide frame** (pause menu, race intro banner,
   crash results) is squeezed about the centre to the size it has in 16:9.
+  With the widescreen HUD fix on, its content is 4:3 and its decoration (the
+  header, the bottom panel) spans the wide frame
+  ([widescreen-hud.md](widescreen-hud.md), BO-222).
 - **The HUD** follows `aspect` (set by the widescreen HUD fix, which should be
   on with this).
 - The setting is sampled when a stage is set up: a change shows from the next
@@ -36,7 +39,7 @@ the title's own values, through `config/patches.json`.
 |---|---|
 | Menus, car select (3D garage), loading screens, videos | 16:9, bars at the sides |
 | Race, Road Rage, Burning Lap, Crash: the 3D world and its HUD | wide |
-| Race intro banner, pause menu, crash results (drawn over the world) | wide 3D, the overlay at its 16:9 size in the middle |
+| Race intro banner, pause menu, crash results (drawn over the world) | wide 3D, the overlay at its 16:9 size in the middle (with the HUD fix: its content 4:3, its decoration across the frame) |
 | Crash mode's loading screens between its phases | 16:9 |
 | A stage's last frame, drawn under the loading screen | 16:9 |
 

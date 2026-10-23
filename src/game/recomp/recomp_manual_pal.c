@@ -20,6 +20,12 @@ void sub_001D0874(void) { bo3_soundtrack_open_song(sub_001D0874_gen); }   /* NTS
 void sub_0030241F(void) { bo3_soundtrack_create_decoder(sub_0030241F_gen); }   /* NTSC-U sub_0030211F */
 void sub_00153A60(void) { bo3_soundtrack_start_track(sub_00153A60_gen); }   /* NTSC-U sub_001537C0 */
 
+/* The title's "start the music of the source chosen" (BO-230): the one place
+ * the chosen soundtrack is read, and the one place a start switches it. */
+extern void sub_001556C0_gen(void);
+
+void sub_001556C0(void) { bo3_soundtrack_start_source(sub_001556C0_gen); }   /* NTSC-U sub_00155420 */
+
 /* DirectSound's "voice done" (BO-173): NTSC-U sub_002FAAEF. */
 extern void sub_002FADEF_gen(void);
 
@@ -41,10 +47,22 @@ extern void sub_001E1900_gen(void);
 extern void sub_001DD5A0_gen(void);
 extern void sub_00030590_gen(void);
 extern void sub_00053790_gen(void);
+extern void sub_003510B0_gen(void);
+extern void sub_00167BE0_gen(void);
+extern void sub_000383C0_gen(void);
+extern void sub_00036980_gen(void);
+extern void sub_0013F1E0_gen(void);
+extern void sub_00188A50_gen(void);
 
 void sub_000166B0(void) { bo3_update(sub_000166B0_gen); }   /* NTSC-U sub_000165F0 */
 void sub_001E1900(void) { bo3_frame_sync_dirty(sub_001E1900_gen); }   /* NTSC-U sub_001E15E0 */
 void sub_001DD5A0(void) { bo3_frame_get_ltm(sub_001DD5A0_gen); }   /* NTSC-U sub_001DD280 */
 void sub_00030590(void) { bo3_draw_vehicle(sub_00030590_gen); }   /* NTSC-U sub_000303D0 */
 void sub_00053790(void) { bo3_hud_update(sub_00053790_gen); }   /* NTSC-U sub_000535E0 */
+void sub_003510B0(void) { bo3_swap(sub_003510B0_gen); }   /* NTSC-U sub_00350DB0 */
+void sub_00167BE0(void) { bo3_player_frame(sub_00167BE0_gen); }   /* NTSC-U sub_00167940 */
+void sub_000383C0(void) { bo3_spark_history(sub_000383C0_gen); }   /* NTSC-U sub_00038200 */
+void sub_00036980(void) { bo3_spark_draw(sub_00036980_gen); }   /* NTSC-U sub_000367C0 */
+void sub_0013F1E0(void) { bo3_race_audio(sub_0013F1E0_gen); }   /* NTSC-U sub_0013EF40 */
+void sub_00188A50(void) { bo3_fx_clock(sub_00188A50_gen); }   /* NTSC-U sub_00188750 */
 #endif

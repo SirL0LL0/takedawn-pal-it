@@ -2,10 +2,12 @@ package io.github.xenophobentx.takedawn;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.database.Cursor;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
+import android.provider.DocumentsContract;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
@@ -17,6 +19,9 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * The first start: the game's data from the player's own disc image.
@@ -30,8 +35,15 @@ import java.io.File;
  *
  *   <files>/Burnout 3 Takedown/      and at the end    <files>/.complete
  *
- * An install that was stopped goes on where it was when the same image is
- * chosen again. A game folder copied there by hand (the way before this
+ * The game folder of a disc that was extracted (the picker's "Choose game
+ * folder"; ACTION_OPEN_DOCUMENT_TREE, BO-223) goes through the same
+ * installer: a content:// tree has no file names, so the installer asks
+ * openSource() below for each file by its path on the disc and reads it from
+ * the descriptor that comes back. Same manifest check, same journal, same
+ * messages; nothing is staged, so no second copy of the data is made.
+ *
+ * An install that was stopped goes on where it was when the same image (or
+ * folder) is chosen again. A game folder copied there by hand (the way before this
  * page) is checked where it lies; nothing is copied then.
  *
  * In a process of its own (android:process=":setup"), as the bug report: the
@@ -40,10 +52,11 @@ import java.io.File;
  */
 public class SetupActivity extends Activity {
     private static final int PICK = 1;
+    private static final int PICK_TREE = 2;
     private LinearLayout box;
     private TextView status, detail;
     private ProgressBar bar;
-    private Button pick, cancel, start, driver;
+    private Button pick, pickTree, cancel, start, driver;
     private volatile boolean running;
     private String root;
     private String[] about = { "Burnout 3: Takedown", "North America (NTSC-U) retail", "716",
@@ -53,6 +66,22 @@ public class SetupActivity extends Activity {
     private static native String nativeAbout();
     private static native void nativeCancel();
     private native String nativeInstall(int fd, String folder, String root);
+    private native String nativeInstallTree(String root);
+
+    // The picked document tree, read by the installer through openSource().
+    private Uri tree;
+    private boolean fromTree;
+    /** The size of the file openSource() returned a descriptor of (read by the native side). */
+    @SuppressWarnings("unused")
+    private volatile long srcSize;
+    private String treeBase;
+    private final Map<String, Map<String, Entry>> listings = new HashMap<>();
+
+    private static final class Entry {
+        String id;
+        boolean dir;
+        long size;
+    }
 
     /** Called by the installer, on its thread. */
     @SuppressWarnings("unused")
@@ -99,6 +128,20 @@ public class SetupActivity extends Activity {
                 }
             }
         });
+        pickTree = button("Choose game folder\u2026 (a disc already extracted to a folder)",
+                new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+                try {
+                    startActivityForResult(i, PICK_TREE);
+                } catch (Exception e) {
+                    status.setText("This device cannot choose a folder (" + e.getMessage() + ").\n\n"
+                            + "Choose the disc image instead, or copy the folder with default.xbe"
+                            + " in it to\n" + root + "/" + GameActivity.GAME_DIR
+                            + "\nand open the app again: the files are then checked where they are.");
+                }
+            }
+        });
         cancel = button("Cancel", new View.OnClickListener() {
             @Override public void onClick(View v) {
                 nativeCancel();
@@ -119,7 +162,9 @@ public class SetupActivity extends Activity {
         text("The graphics driver is chosen automatically.", 13, 0xFF909090);
         text("Nothing of the game is in this app: its files come from your own disc. Make an"
                 + " image of it (an .iso from the Xbox or a PC drive that reads Xbox discs)"
-                + " and put the file on this device or its SD card. The image is only read.",
+                + " and put the file on this device or its SD card, or choose the folder the"
+                + " disc was extracted to (the one with default.xbe in it). The image or"
+                + " folder is only read.",
                 13, 0xFF909090);
         button("Licences", new View.OnClickListener() {
             @Override public void onClick(View v) {
@@ -180,7 +225,7 @@ public class SetupActivity extends Activity {
             status.setText((st == 2 ? "The data here was installed for another build of the"
                         + " game and has to be installed again.\n\n" : "")
                     + (begun ? "An install was begun and not finished. Choose the same image"
-                        + " again: the files already copied are kept.\n\n" : "")
+                        + " or folder again: the files already copied are kept.\n\n" : "")
                     + "The game needs the files of " + about[0] + ", " + about[1] + ": "
                     + about[2] + " files, " + String.format("%.2f", gb) + " GB, and "
                     + String.format("%.1f", Long.parseLong(about[4]) / 1e9) + " GB free here ("
@@ -212,6 +257,7 @@ public class SetupActivity extends Activity {
 
     private void show(boolean p, boolean c, boolean s) {
         pick.setVisibility(p ? View.VISIBLE : View.GONE);
+        pickTree.setVisibility(p ? View.VISIBLE : View.GONE);
         cancel.setVisibility(c ? View.VISIBLE : View.GONE);
         start.setVisibility(s ? View.VISIBLE : View.GONE);
         bar.setVisibility(c ? View.VISIBLE : View.GONE);
@@ -221,7 +267,43 @@ public class SetupActivity extends Activity {
     }
 
     /** What to do about each of the installer's answers, after its own sentence. */
-    private static String advice(String code) {
+    private String advice(String code) {
+        if (fromTree) {
+            String f = adviceFolder(code);
+            if (f != null) {
+                return f;
+            }
+        }
+        return adviceImage(code);
+    }
+
+    /** The same answers for a chosen folder; null where the image's words fit. */
+    private static String adviceFolder(String code) {
+        switch (code) {
+        case "no-xbe":
+        case "wrong-game":
+            return "Choose the folder of Burnout 3: Takedown (the one with default.xbe in it).";
+        case "truncated-image":
+        case "damaged-source":
+            return "The folder is incomplete or not a clean copy of the disc. Extract the disc"
+                    + " again, or copy the folder to the device again, and choose it once"
+                    + " more: the files already checked are kept.";
+        case "disk-full":
+            return "Free some space on the device and choose the folder again: the files"
+                    + " already copied are kept.";
+        case "source-unreadable":
+        case "no-source":
+            return "A file of the folder could not be read. If it is on an SD card or a network"
+                    + " place, copy the folder to the device and choose it there.";
+        case "cancelled":
+            return "Stopped. Choose the same folder again to go on: the files already copied"
+                    + " are kept.";
+        default:
+            return null;
+        }
+    }
+
+    private static String adviceImage(String code) {
         switch (code) {
         case "not-xbox-image":
             return "Choose the image of the game disc itself: one file, about 7 GB (a full"
@@ -259,7 +341,12 @@ public class SetupActivity extends Activity {
     }
 
     private void run(final ParcelFileDescriptor pfd, final String folder) {
+        run(pfd, folder, false);
+    }
+
+    private void run(final ParcelFileDescriptor pfd, final String folder, final boolean asTree) {
         running = true;
+        fromTree = asTree;
         show(false, true, false);
         bar.setProgress(0);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -267,7 +354,8 @@ public class SetupActivity extends Activity {
             @Override public void run() {
                 String res;
                 try {
-                    res = nativeInstall(pfd != null ? pfd.getFd() : -1, folder, root);
+                    res = asTree ? nativeInstallTree(root)
+                            : nativeInstall(pfd != null ? pfd.getFd() : -1, folder, root);
                 } catch (Throwable e) {
                     res = "internal\n" + e + "\n0 0 0 0";
                 }
@@ -304,6 +392,17 @@ public class SetupActivity extends Activity {
     @Override
     protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
+        if (request == PICK_TREE) {
+            if (result == RESULT_OK && data != null && data.getData() != null) {
+                tree = data.getData();
+                treeBase = null;
+                listings.clear();
+                status.setText("Checking the folder and copying the game's data. The device may"
+                        + " be left alone; the screen stays on.");
+                run(null, null, true);
+            }
+            return;
+        }
         if (request != PICK || result != RESULT_OK || data == null || data.getData() == null) {
             return;
         }
@@ -319,6 +418,98 @@ public class SetupActivity extends Activity {
         } catch (Exception e) {
             status.setText("The file could not be opened: " + e.getMessage() + "\n\n"
                     + advice("source-unreadable"));
+        }
+    }
+
+    /** The children of a directory of the tree, by lower-case name; cached. */
+    private Map<String, Entry> list(String docId) {
+        Map<String, Entry> m = listings.get(docId);
+        if (m != null) {
+            return m;
+        }
+        m = new HashMap<>();
+        Uri kids = DocumentsContract.buildChildDocumentsUriUsingTree(tree, docId);
+        Cursor q = null;
+        try {
+            q = getContentResolver().query(kids, new String[] {
+                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                    DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                    DocumentsContract.Document.COLUMN_MIME_TYPE,
+                    DocumentsContract.Document.COLUMN_SIZE }, null, null, null);
+            while (q != null && q.moveToNext()) {
+                Entry e = new Entry();
+                e.id = q.getString(0);
+                e.dir = DocumentsContract.Document.MIME_TYPE_DIR.equals(q.getString(2));
+                e.size = q.isNull(3) ? -1 : q.getLong(3);
+                String name = q.getString(1);
+                if (name != null) {
+                    m.put(name.toLowerCase(Locale.ROOT), e);
+                }
+            }
+        } catch (Exception e) {
+            Log.w(GameActivity.TAG, "setup: listing " + docId + ": " + e);
+        } finally {
+            if (q != null) {
+                q.close();
+            }
+        }
+        listings.put(docId, m);
+        return m;
+    }
+
+    /**
+     * The directory of the tree that holds default.xbe: the tree's own, or one
+     * level below it (a disc extracted into a folder of its own name).
+     */
+    private String base() {
+        if (treeBase == null) {
+            String rootId = DocumentsContract.getTreeDocumentId(tree);
+            treeBase = rootId;
+            if (!list(rootId).containsKey("default.xbe")) {
+                for (Entry e : list(rootId).values()) {
+                    if (e.dir && list(e.id).containsKey("default.xbe")) {
+                        treeBase = e.id;
+                        break;
+                    }
+                }
+            }
+        }
+        return treeBase;
+    }
+
+    /**
+     * Called by the installer, on its thread: the file at `rel` (as on the
+     * disc, forward slashes; any case) as a descriptor to read, whose size is
+     * left in srcSize. -1: the tree has no such file. -2: it has and cannot be
+     * read.
+     */
+    @SuppressWarnings("unused")
+    private int openSource(String rel) {
+        Entry e = null;
+        String dir = base();
+        String[] parts = rel.split("/");
+        for (int i = 0; i < parts.length; i++) {
+            e = list(dir).get(parts[i].toLowerCase(Locale.ROOT));
+            if (e == null || (e.dir != (i < parts.length - 1))) {
+                return -1;
+            }
+            dir = e.id;
+        }
+        if (e == null) {
+            return -1;
+        }
+        try {
+            ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(
+                    DocumentsContract.buildDocumentUriUsingTree(tree, e.id), "r");
+            if (pfd == null) {
+                return -2;
+            }
+            long size = pfd.getStatSize();
+            srcSize = size >= 0 ? size : e.size;
+            return pfd.detachFd();
+        } catch (Exception ex) {
+            Log.w(GameActivity.TAG, "setup: " + rel + ": " + ex);
+            return -2;
         }
     }
 

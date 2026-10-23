@@ -21,6 +21,7 @@
 #     Resources/Takedawn.icns  from assets/icon/takedawn-macos.svg
 #     Resources/qt.conf
 #     Resources/licenses/      THIRD_PARTY.txt, the licence texts, SOURCE.txt
+#     Resources/shaders/upscale/  the texture upscaler's LGPL shader files (BO-245)
 #
 # The setup window (tools/install/gui) is built here against the pinned
 # qt.io kit (pins.env: QT_VERSION; fetched into the cache with aqtinstall)
@@ -145,6 +146,13 @@ done
 iconutil -c icns "$ICONSET" -o "$C/Resources/Takedawn.icns"
 
 if [ "$HAVE_SETUP" = yes ]; then copy_licenses "$C/Resources/licenses" qt; else copy_licenses "$C/Resources/licenses"; fi
+# BO-245: graphics.texture_upscale's shader files (LGPL-3.0-or-later, loaded
+# at runtime from Resources/shaders/upscale; their NOTICE.md says where they
+# come from and how to replace them). Separate files, not in the program.
+U="$C/Resources/shaders/upscale"; mkdir -p "$U"
+cp "$TOOLKIT/third_party/upscale_shaders/"*.metal "$TOOLKIT/third_party/upscale_shaders/VERSION" \
+   "$TOOLKIT/third_party/upscale_shaders/NOTICE.md" "$TOOLKIT/third_party/upscale_shaders/"COPYING* "$U/"
+cp -R "$TOOLKIT/third_party/upscale_shaders/upstream" "$U/"
 
 sed -e "s/@VERSION@/$VERSION/g" -e "s/@BUNDLE_ID@/$MACOS_BUNDLE_ID$ID_SUFFIX/g" -e "s/@APP_TITLE@/$APP_TITLE/g" \
     -e "s/@MIN_OS@/$MACOS_DEPLOYMENT_TARGET/g" \

@@ -37,7 +37,11 @@ toolkit checkout is found as before (`XBOXRECOMP_DIR`, or a sibling `xboxrecomp`
 Ship: `burnout3.exe`, `SDL2.dll`, the user's own `Burnout 3 Takedown\` folder
 (next to the exe; the exe runs from that working directory). Nothing else:
 glslang and libc++/winpthreads are linked statically, the UCRT is part of
-Windows 10+, `vulkan-1.dll` is the GPU driver's.
+Windows 10+, `vulkan-1.dll` is the GPU driver's. The exe does not import it:
+the game opens it at run time (BO-231), so a PC without one, or with one older
+than Vulkan 1.3, gets a message that says to update the graphics driver, not a
+loader error before the game starts. The import library the build is given is
+only there for CMake's `find_package(Vulkan)`; nothing links it.
 
 ## Test checklist (AMD Windows PC)
 
@@ -104,13 +108,19 @@ line (`QProcess`), and reads paths from variables with
   monitor, as the D3D11 presenter does: `[PRESENT] vblank sync: ... (DXGI
   WaitForVBlank ...)`. At 120 Hz the guest vblank takes every second refresh
   (`display 8.33 ms` in the `[PACING]` lines).
-- **Guest threads sit on the second physical core, not core 0.** The title's
-  threads are pinned to one host core, as on the console. On Windows core 0
-  takes the device interrupts and much other work: pinned there, 1.6 % of the
-  60 Hz race frames were late (p99 31.6 ms, frames of 66-99 ms in which the
-  process used no CPU while the vblank thread kept time). The default is now
-  the first even-numbered logical processor from 2 on (`[KERNEL] guest threads
-  on one host core (cpu 2)`); `RECOMP_GUEST_CPUS=<n>` picks one, `=all` unpins.
+- **Guest threads run on every core.** The toolkit pins a title's threads to
+  one host core, as on the console (another title races without it), but
+  Burnout 3 opts out on Windows (`xbox_GuestCpusDefaultUnpinned`, BO-282.10):
+  pinned, its thread waited for that idle core to wake after each hand-off
+  with the render thread, and the drifting corners at 120 Hz missed about
+  twice as many pictures (Ryzen 7 5800X, 3 x 3 runs: frames over 9 ms
+  560/609/550 pinned, 316/321/295 unpinned; late flips 56/72/47 against
+  5/2/2). Its threads are safe unpinned: the Mac has always run them so, and
+  a lockstep race gives the same step hashes either way.
+  `RECOMP_DEBUG=guest_cpus=<n>` pins them to core n again (the old default was
+  the first even-numbered logical processor from 2 on, `[KERNEL] guest
+  threads on one host core (cpu 2)`: core 0 takes the device interrupts, and
+  pinned there 1.6 % of the 60 Hz race frames were late).
 - **Frame rate follows the display mode.** With vsync on the game flips at most
   twice per display refresh, so a screen in a 24 Hz mode gives `48 flips/s, 24
   presents/s` (the "45 fps" seen in an early title bar was a test PC's 4K output

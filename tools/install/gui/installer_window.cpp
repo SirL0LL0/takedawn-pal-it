@@ -191,7 +191,8 @@ QProcessEnvironment ChildEnvironment() {
 // A program that never got going: the last lines it printed go in the note, where the
 // person looks, not only in the details.
 QString WithTail(const QString& code, const QString& advice, const QString& detail) {
-  if (code != "program-failed" || detail.isEmpty()) return advice;
+  if ((code != "program-failed" && code != "program-entrypoint" && code != "program-dll") || detail.isEmpty())
+    return advice;
   const QStringList lines = detail.split('\n');
   return advice + "\n\n" + lines.mid(std::max<qsizetype>(0, lines.size() - 3)).join('\n');
 }
@@ -1606,7 +1607,7 @@ void InstallerWindow::OnFinished(const DriverProcess::Result& result) {
     // the installer said what
   } else if (!result.saw_protocol && (result.crashed || result.exit_code != 0)) {
     // not one line of the protocol: the program never got going
-    failure.code = "program-failed";
+    failure.code = messages::ProgramFailedCode(result.exit_code);
     failure.message = result.stderr_tail.isEmpty()
                           ? tr("The program ended with status %1 without printing anything.").arg(result.exit_code)
                           : result.stderr_tail.mid(std::max<qsizetype>(0, result.stderr_tail.size() - 3)).join('\n');
@@ -1964,7 +1965,7 @@ bool InstallerWindow::ProgramFailed(const DriverProcess::Result& result, bool us
                                                 : result.stderr_tail.join('\n');
   AppendLog("$ " + program_ + ": ended with status " + QString::number(result.exit_code) +
                 (result.crashed ? " (crashed)" : "") + " without a protocol line", true);
-  Break("program-failed", detail);
+  Break(messages::ProgramFailedCode(result.exit_code), detail);
   return true;
 }
 

@@ -5,8 +5,41 @@ toolkit's `docs/runtime/present-timing.md`. This page has what was measured
 with this game and how to measure it again.
 
 Setting: `display.present_timing = legacy | auto` (F1 > Display > Frame
-presentation; `RECOMP_PRESENT_TIMING`). The default is `legacy` until the
-owner has compared the two on his variable-refresh monitor.
+presentation; `RECOMP_PRESENT_TIMING`). The default on macOS is `auto` since
+0.2.1 (BO-239); before, it was `legacy`. A stored setting still wins, so a
+player who picked `legacy` keeps it. Windows, Linux and Android have no
+such setting in effect (their presenters do not read it).
+
+## Why `auto` is the macOS default (GitHub #42, BO-239)
+
+A MacBook Pro M5 Max on macOS 27 with only an external LG HDR 4K at 60 Hz
+("looks like" a scaled mode), fullscreen, 0.2.0:
+
+| Run | Skipped by the presenter | Uneven | Vblank to glass p50 |
+|---|---|---|---|
+| `legacy` (2 drawables) | not counted; every other frame shown | | 33 ms on glass per frame |
+| `legacy`, `RECOMP_PRESENT_DRAWABLES=3` | 0 of 859 | 0% | 65.6 ms |
+| `auto` | 142 of 859, 79 of 866 | 35%, 19% | 21.7 ms |
+| `auto`, `RECOMP_PRESENT_PHASE=8` | 77 of 897 | 18% | 24.7 ms |
+
+With two drawables a drawable came back about 1 ms after the next frame
+reached the glass (the surface was held by the display), so the presenter
+could take only every other flip. With `auto` a quarter of the frames missed
+their refresh with the commit timing identical for the frames on time and
+the late ones (21.5 ms before the target, 0.2 ms of jitter): the miss was on
+the compositor's side. The time handed to `presentDrawable:atTime:` was half
+a refresh before the frame's refresh (8.3 ms), probably on the flip deadline
+of a directly scanned-out surface; a later phase did not move it.
+
+So 0.2.1 makes `auto` the default and hands each frame over 3 ms after the
+refresh before its own (13.7 ms ahead at 60 Hz;
+`RECOMP_PRESENT_HANDOVER=<ms>` tunes it, at most half a refresh is used).
+The target refresh is the same, so this costs no latency against 0.2.0's
+`auto`, and `auto` is 21.7 ms from vblank to glass against `legacy`'s 35 to
+60 ms on the Mac's own panel (the table below). If a Mac ever shows frames
+a refresh early with it, three such frames put the hand-over back at half a
+refresh (logged). Whether the earlier hand-over removes the reporter's
+skips is measured only on his machine (a test build, 0.2.1-test.1).
 
 ## How to measure
 

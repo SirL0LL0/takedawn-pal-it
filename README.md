@@ -155,6 +155,18 @@ an undistorted HUD, ultrawide, and a settings menu you can open mid-race.
 
 ## Highlights
 
+- High refresh rate: draws at your display's refresh rate (120, 144 Hz and
+  faster) while the game keeps its 60 steps a second. Cars and the camera
+  move smoothly between the steps.
+- Texture upscale: sharpens the world's textures on the graphics card, with
+  FSRCNNX or NNEDI3. Most of the work happens during the loading screen, and
+  the results are kept on disk for the next race. Off by default. Not on
+  Android.
+- Rival marker: Original or Farther. Farther shows the race position from
+  60 m and stops flipping back and forth.
+- Crash Nav map at full width with the widescreen HUD, or in its 4:3 shape.
+- Overscan Fill height: drops only the black border at the top and bottom,
+  so the picture fills the height of the screen.
 - HDR on Windows, Linux and the Steam Deck: the game's own light above white,
   which the console's output clipped. Lamps, sparks, the boost and the sun go
   past white. HUD and menus stay at paper white.
@@ -165,7 +177,8 @@ an undistorted HUD, ultrawide, and a settings menu you can open mid-race.
 - Render scale from 1x (640x480, as on the console) to 4x (2560x1920).
   Android also has 1.5x.
 - The game's own 16:9 mode stretches the HUD by a third. The widescreen HUD
-  fix keeps it in its 4:3 shape, at the edges of the screen.
+  fix keeps it in its 4:3 shape, at the edges of the screen. The menus keep
+  their 4:3 shape in the middle too.
 - Scenery detail: trees and other roadside objects keep their detailed models
   as far as they are drawn. On the console the pines turn into flat cut-outs
   at 250 m and pop back to full detail as you get close.
@@ -183,8 +196,9 @@ an undistorted HUD, ultrawide, and a settings menu you can open mid-race.
 - Your own music: choose a folder of MP3, FLAC, Ogg or WAV files and pick it
   in the game's EA GAMES TRAX menu, like a custom soundtrack on the Xbox. Each
   folder is one soundtrack, and each song's volume is matched to the game's
-  music. On Android the game asks for access to your music files the first
-  time you open that menu row.
+  music. The game can start on the soundtrack you chose last. On Android
+  the game asks for access to your music files the first time you open that
+  menu row.
 - 5.1 surround, with a per-speaker mix for each sound group (music, engines,
   crashes and more) and a recommended 5.1 preset.
 - Menu and HUD upscaling redraws the game's 2D art at 2x or 4x with an
@@ -218,10 +232,10 @@ an undistorted HUD, ultrawide, and a settings menu you can open mid-race.
 
 | Platform | File | Size |
 |---|---|---|
-| Mac (Apple silicon, macOS 13 or newer) | [`Takedawn-0.2.0-macos-arm64.dmg`](https://github.com/xenophobentx/takedawn/releases/download/v0.2.0/Takedawn-0.2.0-macos-arm64.dmg) | about 20 MB |
-| Windows (64-bit) | [`Takedawn-0.2.0-windows-x64-setup.exe`](https://github.com/xenophobentx/takedawn/releases/download/v0.2.0/Takedawn-0.2.0-windows-x64-setup.exe) | about 18 MB |
-| Linux and Steam Deck (x86-64) | [`Takedawn-0.2.0-linux-x86_64.AppImage`](https://github.com/xenophobentx/takedawn/releases/download/v0.2.0/Takedawn-0.2.0-linux-x86_64.AppImage) | about 25 MB |
-| Android (arm64, Snapdragon), experimental | [`Takedawn-0.2.0-android-arm64.apk`](https://github.com/xenophobentx/takedawn/releases/download/v0.2.0/Takedawn-0.2.0-android-arm64.apk) | about 15 MB |
+| Mac (Apple silicon, macOS 13 or newer) | [`Takedawn-0.2.1-macos-arm64.dmg`](https://github.com/xenophobentx/takedawn/releases/download/v0.2.1/Takedawn-0.2.1-macos-arm64.dmg) | about 20 MB |
+| Windows (64-bit) | [`Takedawn-0.2.1-windows-x64-setup.exe`](https://github.com/xenophobentx/takedawn/releases/download/v0.2.1/Takedawn-0.2.1-windows-x64-setup.exe) | about 18 MB |
+| Linux and Steam Deck (x86-64) | [`Takedawn-0.2.1-linux-x86_64.AppImage`](https://github.com/xenophobentx/takedawn/releases/download/v0.2.1/Takedawn-0.2.1-linux-x86_64.AppImage) | about 24 MB |
+| Android (arm64, Snapdragon), experimental | [`Takedawn-0.2.1-android-arm64.apk`](https://github.com/xenophobentx/takedawn/releases/download/v0.2.1/Takedawn-0.2.1-android-arm64.apk) | about 14 MB |
 
 All files are on the [releases page][releases], with a `SHA256SUMS` file and a
 `BUILDINFO` file that says what each was built from. To check a download, run
@@ -246,6 +260,21 @@ I play it on these machines:
 | PC | AMD Ryzen 7 5825U | 28 GB usable | AMD Radeon Vega (Barcelo), Mesa RADV | Ubuntu 24.04 |
 | Retroid Pocket 5 | Snapdragon 865 | 8 GB | Adreno 650, bundled Turnip driver | Android 13 |
 | Laptop | Intel Core Ultra 5 228V | 32 GB | Intel Arc 130V | Windows 11, tried only |
+
+Before 0.2.1 went out, I ran it for 40 minutes or more in one go on each
+platform, race after race without restarting the game, with the settings a
+fresh install starts with: on the MacBook Air, the Windows PC with the Ryzen 7
+5800X at 120 Hz, the Steam Deck OLED in Game Mode at 60 Hz and the Retroid
+Pocket 5. None of them crashed. Memory use stayed flat on the Mac, Windows and
+the Deck. On the Retroid Pocket 5 it grew by about 3 MB a minute, which I am
+looking into.
+
+I also installed 0.2.1 by hand the way this README describes, from the
+download through the setup window and the disc image to a race, on the Mac,
+on Windows 11 and on Ubuntu 24.04. The update kept saves, settings and game
+data on Windows and Ubuntu (from 0.2.0) and on my Steam Deck (from 0.1.1,
+started from its existing Steam shortcut in Game Mode). On the Retroid Pocket
+5, the new APK installed over the old one kept the save and settings.
 
 That's as much as one person can test. If you play it on other hardware,
 or something breaks, please tell me through the [issue form][issues]. A bug
@@ -286,7 +315,7 @@ report zip from Advanced > Create bug report helps a lot.
 - Windows: 64-bit Windows 10 or newer and a graphics driver with Vulkan 1.3.
   With AMD graphics, use Adrenalin 26.8.1 or newer. Older AMD drivers leak
   memory, which adds up over a long session.
-- Linux and Steam Deck: x86-64, glibc 2.29 or newer and a graphics driver
+- Linux and Steam Deck: x86-64, glibc 2.30 or newer and a graphics driver
   with Vulkan 1.3. The AppImage needs no FUSE library.
 - Android: Android 13 or newer, 64-bit, a Snapdragon chip with Adreno
   graphics, and a built-in or connected controller.
@@ -406,8 +435,8 @@ the game data and your saves and says where they are. Delete
 1. Make the AppImage executable and start it:
 
    ```sh
-   chmod +x Takedawn-0.2.0-linux-x86_64.AppImage
-   ./Takedawn-0.2.0-linux-x86_64.AppImage
+   chmod +x Takedawn-0.2.1-linux-x86_64.AppImage
+   ./Takedawn-0.2.1-linux-x86_64.AppImage
    ```
 
 2. The setup window looks for your disc in your home folder, Downloads,
@@ -423,7 +452,7 @@ the game data and your saves and says where they are. Delete
 The game data goes to `~/.local/share/takedawn/Game`, or to
 `$XDG_DATA_HOME/takedawn/Game` if that variable is set, or to the folder you
 pick with Change... in the setup window (an SD card, for example). Nothing is installed
-system-wide. The AppImage bundles its own SDL and Qt and needs glibc 2.29 or
+system-wide. The AppImage bundles its own SDL and Qt and needs glibc 2.30 or
 newer, the Vulkan loader and the usual desktop libraries from your system. It
 was built in the Steam Runtime SDK. If it doesn't run on your distribution,
 please report it.
@@ -472,11 +501,13 @@ I test the Android build on a Retroid Pocket 5. The [Devices](#devices) list has
    apps. Allow it, install, and switch the permission off again if you
    like. Google Play Protect may also ask whether to install an app it
    does not know.
-2. Copy your disc image to the device, or have it on an SD card.
-3. Start Takedawn. The first start asks for the disc image. Pick it with the
-   system's file picker. The app doesn't ask for storage permission. It checks the
-   image and copies the data into its own folder, hashing every file. If the
-   copy is interrupted, pick the same image again and it continues.
+2. Copy your disc image to the device, or have it on an SD card. An
+   extracted game folder works too.
+3. Start Takedawn. The first start asks for the disc image or the game
+   folder. Pick it with the system's file picker. The app doesn't ask for
+   storage permission. It checks the image and copies the data into its own
+   folder, hashing every file. If the copy is interrupted, pick the same image
+   again and it continues.
 4. Play with the built-in controls, a connected controller or the touch
    controls. The touch controls show while no
    controller is in use and hide when you press a button on one. In a race
@@ -581,13 +612,15 @@ still in the menu. Everything else that changes the console's look
 | Fullscreen | On, Off | On. Not on Android, where the game always fills the screen |
 | Aspect ratio (restart) | 4:3, 16:9 | 16:9, the game's own widescreen mode |
 | Filter | Nearest, Linear, Integer | Linear. How the picture is scaled to the window |
-| Overscan | Show all, Crop | Crop: cuts off the border a TV would hide |
+| Overscan | Show all, Crop, Fill height | Crop: cuts off the border a TV would hide, the sides too. Fill height drops only the black border at the top and bottom and stretches the picture to the full height (about 7% taller, as a PS2 looked on a TV); the sides stay |
 | Present fit | Letterbox, Fill 16:10 | Letterbox. Fill 16:10 fills a Steam Deck's screen and crops the sides a little |
 | Speed units | mph, km/h | mph, as on the disc. km/h also changes distances to metres. Applies from the next race |
-| Widescreen HUD | On, Off | On. With 16:9, keeps the HUD in its 4:3 shape at the edges of the picture. Applies from the next race |
+| Widescreen HUD | On, Off | On. With 16:9, keeps the HUD in its 4:3 shape at the edges of the picture, and the menus 4:3 in the middle with the decoration across the screen. Applies from the next race |
+| Crash Nav map | Full width, 4:3 | Full width. Shown with Widescreen HUD on. In Crash Nav's Select Location, Full width spreads the map, its route and its markers across the screen like the frame around it. 4:3 keeps the map in the shape of the rest of the menu. Changes at once |
 | Ultrawide | Off, 21:9, 32:9, Window | Off. Needs Aspect ratio 16:9. Applies from the next race |
-| Frame pacing | Automatic, Low latency, Smooth | Automatic: Smooth on a Steam Deck, Low latency elsewhere. Windows, Linux and Steam Deck. Smooth keeps one finished frame queued, so a late frame does not repeat the last one. It adds one refresh (16.7 ms at 60 Hz) of delay. On a variable-refresh display it acts like Low latency |
+| Frame pacing | Automatic, Low latency, Smooth | Automatic: Smooth on a Steam Deck, Low latency elsewhere. Windows, Linux and Steam Deck. Smooth keeps one finished frame queued, so a late frame does not repeat the last one. It adds one refresh (16.7 ms at 60 Hz) of delay. On a variable-refresh display, or at a refresh far from 60 Hz, it acts like Low latency |
 | Score board | Original, Smooth | Original, as on the console. Smooth fades the dark plate behind the score together with its text |
+| Rival marker switch | Original, Farther | Original. The marker over a rival is a small arrow far away and the race position (4th) near. Original changes at 35 m, checked twice a second. Farther shows the position from 60 m and the arrow again past 75 m, checked every frame, so it changes earlier and does not flip back and forth. Changes at once |
 
 **Graphics**
 
@@ -599,15 +632,19 @@ still in the menu. Everything else that changes the console's look
 | Sharpening | 0 to 100% | 30% |
 | Menu and HUD upscaling | Off, 2x, 4x | 2x. Smooths the game's menu text, HUD and icons |
 | Texture sharpness (LOD bias) | Off, Auto, -0.5, -1.0, -1.5 | Auto, Off on Android. With a render scale above 1x, picks sharper texture levels |
+| Texture upscale | Off, FSRCNNX, NNEDI3 | Off. Not on Android. Sharpens the textures of the world (signs, buildings, cars) on the graphics card while you play. FSRCNNX is sharper, NNEDI3 softer. A texture first shows as the game has it and turns sharp a moment later. Sharpened textures are kept on disk, so the next race has them at once. Cut-outs (fences, trees) keep the game's own edges. Uses more video memory |
+| Upscale scale | 2x, 4x | 2x. Shown when Texture upscale is on, not on a Steam Deck, which gets 2x only. 4x needs four times the video memory of 2x and takes longer to fill in. Textures over 256 pixels a side get 2x |
+| Upscale road surfaces | On, Off | Off. Shown when Texture upscale is on. The upscalers can make the road's fine grain look noisy |
+| Upscale while loading | On, Off | On. Shown when Texture upscale is on. Does most of the sharpening during the loading screen and the countdown, so the first race on a track hitches less. A fast PC can leave it off |
 | Dither (Mac only) | On, Off | Off. A faint noise that hides stripes in smooth gradients such as the sky |
-| HDR | On, Off | Off. Shown when the display does HDR: Use HDR on in Windows, or HDR on in game mode on the Steam Deck and Linux. Lamps, sparks, the boost glow and the sun go brighter than white. HUD and menus keep their brightness. Rows for peak, paper white, HUD brightness, shadows, highlights and gamma appear when it is on. A Mac shows the row too, but I have not checked it there |
+| HDR | On, Off | Off. Shown when the display does HDR: Use HDR on in Windows, HDR on in game mode on the Steam Deck and Linux, or an HDR display on a Mac. Lamps, sparks, the boost glow and the sun go brighter than white. HUD and menus keep their brightness. Rows for peak, paper white, HUD brightness, shadows, highlights and gamma appear when it is on. |
 | Bloom | 0 to 100% | 100%, as on the console. The glow over the picture while you boost |
 | Motion blur | 0 to 100% | 100%, as on the console. The streaks towards the edges at speed |
 | Vehicle detail distance | Original, Far (2x), Farthest (4x) | Far, Original on Android. How far away rival cars and traffic keep their detailed models. It does not change scenery or where traffic appears |
 | Scenery detail | Original, Far | Far, Original on Android. How far away trees and other roadside objects keep their detailed models. On Original the pines turn into flat cut-outs at 250 m; on Far they stay detailed as far as they are drawn |
 | 60 fps crash cameras | On, Off | Off. The console drops to 30 in crash and takedown cameras. Needs a fast machine |
 | 60 fps split screen | On, Off | Off. Two-player races at 60 instead of 30. Needs a fast machine; leave it off on a handheld |
-| High refresh rate | On, Off | Off. Draws at the display's refresh rate (120, 144 Hz and faster); the game itself keeps its 60 steps a second, and cars and the camera move smoothly between them. Needs both 60 fps switches above on. Needs a fast machine. [Details](docs/high-refresh.md) |
+| High refresh rate | On, Off | Off. Draws at the display's refresh rate (120, 144 Hz and faster); the game itself keeps its 60 steps a second, and cars and the camera move smoothly between them. Menus and split screen stay at the game's own rate, and so do crash cameras unless 60 fps crash cameras is on. Adds up to one 60 Hz step of delay. Needs a fast machine. [Details](docs/high-refresh.md) |
 | Potato mode | On, Off | Off. A machine under 60 fps runs the start of a race in slow motion until the first crash. On skips frames to keep real time. Applies from the next race. [Details](docs/race-clock.md) |
 | Build shaders now | action | See [the shader pre-build](#the-shader-pre-build). Not on Android |
 
@@ -630,6 +667,7 @@ of the picture.
 | Speakers (restart) | Auto, Stereo, 5.1 | Auto: 5.1 when the system's sound output has six or more channels |
 | Speaker test | action | Plays each of the six speakers in turn |
 | Custom music folder | a folder | Off. See [Can I use my own music?](#faq-and-troubleshooting). On Android the row asks for access to music files |
+| Custom music at start | On, Off | On. With a folder set, the game starts on the custom soundtrack you last chose in EA GAMES TRAX. Off starts on the game's own music |
 | Custom music loudness | Off, Quieter, Match game music, Louder | Match game music |
 | Music in split screen | On, Off | Off. The console plays no music in split screen. On plays EA GAMES TRAX or your custom music in two-player Race and Road Rage |
 
@@ -785,7 +823,8 @@ in the game's track data and cannot be raised by a setting.
 **Can I use my own music?**
 
 Yes. Choose a folder in Audio > Custom music folder, then pick it in the
-game's EA GAMES TRAX screen. It plays MP3, FLAC, Ogg and WAV files. On Android the
+game's EA GAMES TRAX screen. The game starts on the soundtrack you chose
+last (Audio > Custom music at start). It plays MP3, FLAC, Ogg and WAV files. On Android the
 game asks for access to music files the first time you open the row; if you
 said no, allow it in Settings > Apps > Takedawn > Permissions > Music and
 audio.
@@ -795,8 +834,11 @@ audio.
 The game steps its simulation once per frame, so 60 is its own speed. With
 High refresh rate on (Graphics page) it draws at the display's refresh rate
 instead, while the game itself keeps its 60 steps a second: cars and the
-camera are drawn between the steps. Particles, skid marks and crash damage
-still move 60 times a second. [Details](docs/high-refresh.md).
+camera are drawn between the steps. Smoke, debris, skid marks and the dents
+on cars still move 60 times a second. [Details](docs/high-refresh.md).
+=======
+camera are drawn between the steps. Smoke, debris, skid marks and the dents
+on cars still move 60 times a second. [Details](docs/high-refresh.md).
 
 **Can I use my old Xbox save?**
 
@@ -939,13 +981,27 @@ handled.
 
 ## Known issues
 
+- High refresh rate at 120 Hz and above needs a fast processor. On a Ryzen 7
+  5800X the game holds 120 on straights, but it can stutter briefly in drift
+  corners and crashes. A Ryzen 7 7700X holds it. On the Steam Deck at 90 Hz,
+  don't expect a steady 90 fps: there are small dips in heavy scenes, which
+  we're working on smoothing out. High refresh is experimental. If something
+  looks wrong with it on (a car, the camera, the HUD or an effect), turn it
+  off to check, and open an issue with a bug report (Advanced > Create bug
+  report). The next version is meant to close most of the speed gap. These
+  are in testing now:
+  - a faster renderer, which takes about 0.4 ms off every frame;
+  - a faster path for the sparks and debris of a crash, which are the
+    heaviest moments for the processor today;
+  - Smooth frame pacing with High refresh, an option that keeps one frame in
+    hand so a single slow frame doesn't show as a stutter, at the cost of one
+    refresh of extra delay (8 ms at 120 Hz).
 - With Driving controls set to PlayStation 2, Crash mode shows the wrong
   button prompts. The Crashbreaker prompt says B (or Circle), while R2 fires
   it.
 
 ## What's next
 
-- HDR on Macs. In testing.
 - Android: more devices (other Snapdragon handhelds, then non-Adreno GPUs
   with Vulkan 1.3).
 - Texture packs: load replacement textures from a folder, for higher

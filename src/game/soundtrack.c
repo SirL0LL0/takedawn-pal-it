@@ -24,6 +24,7 @@
  */
 #include "region.h"
 #include "soundtrack.h"
+#include "soundtrack_start.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -93,9 +94,18 @@ static int title_on_ea_trax(void)
 
 /* ── the folder, from the overlay ──────────────────────────────────── */
 
-/* What the last change came to, for the line under the overlay's row. */
-enum { NOTE_NONE, NOTE_LIVE, NOTE_NEXT_START, NOTE_FAILED };
+#ifdef XBOXRECOMP_HAVE_OVERLAY
+/* BO-230, custom music at start (below, bo3_soundtrack_start_source). */
+static bo3_start_state s_start;        /* soundtrack_start.h */
+#endif
+
+/* What the last change came to, for the line under the overlay's row.
+ * NOTE_HELD: read, and held back while a soundtrack of the folder in use is
+ * the title's music; put in place at the title's next music start
+ * (held_folder_in, BO-243). */
+enum { NOTE_NONE, NOTE_LIVE, NOTE_HELD, NOTE_FAILED };
 static volatile int s_note;
+static volatile int s_held;               /* a folder is held back (the cheap check) */
 
 /* Asked on the scan's thread right before the library is replaced
  * (xbox_SoundtrackSetSwapGate): not while a soundtrack of the library in
@@ -108,15 +118,16 @@ static int swap_gate(void)
 }
 
 /* The scan of a folder chosen in the overlay is through (its thread): the
- * library is in place; the title's count follows. -1: it was kept out
- * (swap_gate), the folder is for the next start. */
+ * library is in place; the title's count follows. -1: it was held back
+ * (swap_gate) for the title's next music start (held_folder_in). */
 static void folder_changed(int soundtracks, int songs)
 {
     (void)songs;
     if (soundtracks < 0) {
-        s_note = NOTE_NEXT_START;
-        fprintf(stderr, "[SOUNDTRACK] a custom soundtrack became the title's music while the folder "
-                        "was read: the new folder is for the next start\n");
+        s_note = NOTE_HELD;
+        s_held = 1;
+        fprintf(stderr, "[SOUNDTRACK] a custom soundtrack is the title's music: the new folder is "
+                        "held back until the title's thread runs on (held_folder_in)\n");
         return;
     }
     if (manager_set_up()) {
@@ -134,20 +145,17 @@ static void overlay_chosen(const char *dir)
     char now[1024];
 
     xbox_SoundtrackInfo(now, sizeof now, NULL, NULL);
-    if (!strcmp(now, dir)) {
+    if (!strcmp(now, dir) && !xbox_SoundtrackPending(NULL, 0, NULL)) {
         s_note = NOTE_NONE;
         return;
     }
-    /* Saved already (the overlay). In use at once unless one of the
-     * soundtracks that would go away is the title's music right now. */
-    if (manager_set_up() && !title_on_ea_trax()) {
-        s_note = NOTE_NEXT_START;
-        fprintf(stderr, "[SOUNDTRACK] a custom soundtrack is the title's music: the new folder "
-                        "is for the next start\n");
-        return;
-    }
-    /* Set first: the scan's thread can say NOTE_NEXT_START (swap_gate)
-     * before this returns. */
+    /* Saved already (the overlay). Read at once; in use when the read is
+     * through, or, while one of the soundtracks that would go away is the
+     * title's music, at the title's next music start (swap_gate, then
+     * held_folder_in). Before BO-243 nothing was read then, and the folder
+     * waited for a restart: with custom music at start (BO-230) that was
+     * every change. Set first: the scan's thread can say NOTE_HELD before
+     * this returns. */
     s_note = NOTE_LIVE;
     if (!xbox_SoundtrackSetFolder(dir, folder_changed))
         s_note = NOTE_FAILED;
@@ -164,8 +172,9 @@ static void overlay_status(char *out, unsigned n)
         return;
     }
     xbox_SoundtrackInfo(dir, sizeof dir, &st, &songs);
-    if (s_note == NOTE_NEXT_START)
-        snprintf(out, n, "Saved. It is used from the next start, because a custom soundtrack is playing now.");
+    if (s_note == NOTE_HELD && xbox_SoundtrackPending(NULL, 0, NULL))
+        snprintf(out, n, "Read. A custom soundtrack is playing: the new folder takes its place as soon as"
+                 " the game runs again (close this menu). The song playing now plays to its end.");
     else if (s_note == NOTE_FAILED)
         snprintf(out, n, "Saved. It could not be read now, so it is used from the next start.");
     else if (!st && xbox_SettingsText("audio.custom_music_dir", NULL)[0] && xbox_SoundtrackFolderUnreadable())
@@ -319,9 +328,121 @@ void bo3_soundtrack_init(void)
     xbox_SoundtrackSetSwapGate(swap_gate);
     if (dir && *dir && !xbox_SoundtrackSetFolder(dir, folder_changed))
         fprintf(stderr, "[SOUNDTRACK] the folder could not be read now: custom music is off\n");
-#if defined(XBOXRECOMP_HAVE_OVERLAY) && !defined(XBOXRECOMP_NO_OVERLAY)
-    xbox_OverlaySetMusicFolder(&k_folder_ops);
+#ifdef XBOXRECOMP_HAVE_OVERLAY
+    /* BO-230: with a folder, the setting on, the start switch waits for the
+     * title's first music start (bo3_soundtrack_start_source). */
+    s_start.pending = dir && *dir && xbox_SettingValue(XS_AUDIO_CUSTOM_AT_START) != 0.0;
 #endif
+    xbox_OverlaySetMusicFolder(&k_folder_ops);
+}
+
+/* ── a folder held back (BO-243) ───────────────────────────────────── */
+
+/*
+ * A folder read while a soundtrack of the folder in use was the title's
+ * music (swap_gate said no) is put in place on the title's thread, at the
+ * first of:
+ *
+ *   - the decoder's Process (m_process), once a frame while a song of the
+ *     folder plays: the song goes on (its file is open), and what the title
+ *     holds of the old list is made the new list's: the source chosen and
+ *     the source in use, the source's descriptor (as sub_00155CB0 makes it
+ *     from the database: the soundtrack's id, song count, length and name,
+ *     manager+0x4E4, copied there by sub_001535C0), the player's copy of
+ *     the id and count (player = manager+8: +0xAC count, +0xB0 id) and the
+ *     track number (manager+0x554, player+0xB4) brought into the new count.
+ *     The next song is then the new soundtrack's, and the EA GAMES TRAX
+ *     screen opens on the new list (its candidate is the source in use).
+ *   - the entry of the title's music start (sub_00155420): it is about to
+ *     stop the music and build all of that from the source chosen, so only
+ *     that is made the new list's.
+ *
+ * A soundtrack becomes the new folder's one of the same name, else its
+ * first (as the start switch does with a name the folder lacks), EA GAMES
+ * TRAX when the new folder has none. Not the player's choice: not
+ * remembered (s_start.seen follows).
+ */
+#define MGR_DESC        0x4E4u           /* the source's descriptor, 0x58 bytes */
+#define MGR_IN_USE      0x534u           /* the source in use (descriptor + 0x50) */
+#define MGR_TRACK       0x554u           /* the track number */
+#define PLAYER          0x008u           /* the player, in the manager */
+#define PL_COUNT        0xACu
+#define PL_ID           0xB0u
+#define PL_TRACK        0xB4u
+
+/* The new library's index for the old library's soundtrack `source` (1..):
+ * by name, else the first; -1 when the new one has none. */
+static int remap(const char *name, int n)
+{
+    return bo3_held_target(n, name[0] ? xbox_SoundtrackIndexOfName(name) : -1);
+}
+
+static void held_folder_in(int playing)
+{
+    const uint32_t mgr = MUSIC_MANAGER;
+    char chosen_name[96] = "", use_name[96] = "";
+    int32_t chosen, in_use, chosen_new, use_new = 0;
+    int n = 0, songs = 0, k, playing_custom;
+
+    int pend_st = 0;
+
+    if (!s_held || !manager_set_up())
+        return;
+    if (!xbox_SoundtrackPending(NULL, 0, &pend_st)) {
+        s_held = 0;                       /* replaced by a newer choice meanwhile */
+        return;
+    }
+    chosen = (int32_t)MEM32(MGR_CHOSEN);
+    in_use = (int32_t)MEM32(mgr + MGR_IN_USE);
+    playing_custom = playing && MEM8(MGR_ON_EA_TRAX) == 0 && in_use >= 1;
+    /* A song plays and the new folder has no soundtrack: nothing to make
+     * the music in use; the title's next music start does it (EA). */
+    if (playing_custom && pend_st < 1)
+        return;
+    if (chosen >= 1)
+        xbox_SoundtrackNameOf(chosen - 1, chosen_name, sizeof chosen_name);
+    if (playing_custom)
+        xbox_SoundtrackNameOf(in_use - 1, use_name, sizeof use_name);
+    s_held = 0;
+    if (!xbox_SoundtrackApplyPending(&n, &songs))
+        return;
+    MEM32(MGR_COUNT) = (uint32_t)n;
+    MEM32(MGR_SOURCES) = (uint32_t)n + 1;
+    s_on = n > 0;
+    chosen_new = chosen;
+    if (chosen >= 1) {
+        k = remap(chosen_name, n);
+        chosen_new = k + 1;
+        MEM32(MGR_CHOSEN) = (uint32_t)chosen_new;
+    }
+    if (playing_custom) {
+        const xst_library *lib = xbox_SoundtrackLibrary();
+        k = remap(use_name, n);
+        if (k >= 0 && lib && k < lib->n_st) {
+            const xst_soundtrack *st = &lib->st[k];
+            uint32_t count = (uint32_t)st->count, track = MEM32(mgr + MGR_TRACK);
+            use_new = k + 1;
+            MEM32(mgr + MGR_DESC + 0) = st->id;
+            MEM32(mgr + MGR_DESC + 4) = count;
+            MEM32(mgr + MGR_DESC + 8) = st->ms;
+            memcpy((void *)XBOX_PTR(mgr + MGR_DESC + 0xC), st->name, sizeof st->name);
+            MEM32(mgr + MGR_IN_USE) = (uint32_t)use_new;
+            MEM32(mgr + PLAYER + PL_ID) = st->id;
+            MEM32(mgr + PLAYER + PL_COUNT) = count;
+            if (count && track != 0xFFFFFFFFu && track >= count) {
+                MEM32(mgr + MGR_TRACK) = track % count;
+                MEM32(mgr + PLAYER + PL_TRACK) = track % count;
+            }
+        }
+    }
+#ifdef XBOXRECOMP_HAVE_OVERLAY
+    s_start.seen = chosen_new;
+#endif
+    s_note = NOTE_LIVE;
+    fprintf(stderr, "[SOUNDTRACK] the title now counts %d soundtrack%s (the folder held back, %s); "
+                    "chosen %d \"%s\" -> %d, in use %d \"%s\" -> %d\n", n, n == 1 ? "" : "s",
+            playing ? "while a song plays" : "at a music start", (int)chosen, chosen_name, (int)chosen_new,
+            (int)in_use, use_name, playing_custom ? (int)use_new : (int)in_use);
 }
 
 /* ── the decoder object's methods ──────────────────────────────────── */
@@ -384,6 +505,9 @@ static void m_process(void)
 {
     int i = slot_of(MEM32(g_esp + 4));
     uint32_t pkt = MEM32(g_esp + 12);
+
+    if (s_held)
+        held_folder_in(1);
 
     if (pkt) {
         uint32_t buf = MEM32(pkt), max = MEM32(pkt + 4) & ~3u;
@@ -464,6 +588,98 @@ void bo3_soundtrack_start_track(bo3_guest_fn title_fn)
             }
         }
     }
+    title_fn();
+}
+
+/* ── custom music at start (BO-230) ────────────────────────────────── */
+
+/*
+ * What the title does, from its code (docs/custom-music.md):
+ *
+ *   - boot (sub_00153B00): manager+0x568 = 0, EA GAMES TRAX. Nothing in the
+ *     profile holds the source: the EA GAMES TRAX screen keeps the profile's
+ *     per-track flags (0x4AE1A0..) and the random-order byte (0x4AE1DA), and
+ *     the source it confirms goes to the manager (0x411B50, +0x568) only.
+ *     So the title starts on EA GAMES TRAX every run.
+ *   - the screen: X steps its own candidate (screen+0x93C) through the
+ *     sources, wrapping to 0; A (sub_00084260, 0x842A9) copies it to
+ *     manager+0x568; the screen's exit then runs sub_00155420.
+ *   - sub_00155420(manager): stops the music, reads manager+0x568, makes the
+ *     source's descriptor (0: EA GAMES TRAX's at 0x3EC870, n: soundtrack n-1
+ *     through sub_00155CB0), picks the next track and starts it.
+ *
+ * So the title is switched the way its screen does it: manager+0x568 = n,
+ * then the title's own sub_00155420 starts it. The wrap sits at the entry of
+ * sub_00155420, which is only ever called to start (or restart) a track: no
+ * song is cut short for it, and the first call after boot is the first music
+ * the player hears. The choice is seen there too: a value of +0x568 that is
+ * not the one last seen is the player's confirm.
+ */
+#define MGR_SOURCE_CHOSEN   0x568u
+#define SOUNDTRACK_KEY      "audio.custom_music_soundtrack"
+
+#ifdef XBOXRECOMP_HAVE_OVERLAY
+/* The soundtrack to start on: its index, or -1 for EA GAMES TRAX (the
+ * player's last choice, or nothing to switch). Nothing chosen yet: the
+ * first. A name the folder no longer has: the first. */
+static int start_target(void)
+{
+    int locked = 0, n = 0;
+    const char *name;
+
+    xbox_SoundtrackInfo(NULL, 0, &n, NULL);
+    name = xbox_SettingsText(SOUNDTRACK_KEY, &locked);
+    return bo3_start_target(n, xbox_SettingsTextIsSet(SOUNDTRACK_KEY) || (locked && name[0]), name,
+                            name[0] ? xbox_SoundtrackIndexOfName(name) : -1);
+}
+
+static void remember_source(int32_t source)
+{
+    char name[96] = "";
+
+    if (source >= 1 && !xbox_SoundtrackNameOf(source - 1, name, sizeof name))
+        return;                           /* a source the library does not have: not ours to note */
+    if (strcmp(xbox_SettingsText(SOUNDTRACK_KEY, NULL), name) || !xbox_SettingsTextIsSet(SOUNDTRACK_KEY)) {
+        xbox_SettingsSetText(SOUNDTRACK_KEY, name);
+        xbox_SettingsFlush();
+        fprintf(stderr, "[SOUNDTRACK] chosen in the game: %s%s%s (remembered)\n",
+                name[0] ? "\"" : "EA GAMES TRAX", name, name[0] ? "\"" : "");
+    }
+}
+#endif
+
+void bo3_soundtrack_start_source(bo3_guest_fn title_fn)
+{
+    held_folder_in(0);
+#ifdef XBOXRECOMP_HAVE_OVERLAY
+    /* Only with a library in use and the manager counting it: the count is
+     * the title's once its music manager is set up, and the scan can end
+     * after the title has booted (folder_changed). */
+    if (s_on && manager_set_up()) {
+        uint32_t mgr = MEM32(g_esp + 4);
+        int32_t cur = (int32_t)MEM32(mgr + MGR_SOURCE_CHOSEN), source = cur;
+
+        switch (bo3_start_step(&s_start, cur, start_target, &source)) {
+        case BO3_START_SWITCH: {
+            char name[96] = "";
+            xbox_SoundtrackNameOf(source - 1, name, sizeof name);
+            MEM32(mgr + MGR_SOURCE_CHOSEN) = (uint32_t)source;
+            fprintf(stderr, "[SOUNDTRACK] custom music at start: soundtrack %d \"%s\"\n", source, name);
+            break;
+        }
+        case BO3_START_EA:
+            fprintf(stderr, "[SOUNDTRACK] custom music at start: EA GAMES TRAX was the last choice\n");
+            break;
+        case BO3_START_REMEMBER:
+            /* The player's confirm in the EA GAMES TRAX screen (before our
+             * start switch, or after it). */
+            remember_source(source);
+            break;
+        default:
+            break;
+        }
+    }
+#endif
     title_fn();
 }
 

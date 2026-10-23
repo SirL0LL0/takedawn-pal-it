@@ -141,6 +141,14 @@ Explained ExplainInstall(const QString& code, const InstallFacts& facts) {
           T("The details say what happened. Press Resume to try again."), false};
 }
 
+QString ProgramFailedCode(int exit_code) {
+  switch (static_cast<unsigned int>(exit_code)) {
+    case 0xC0000139u: return "program-entrypoint";
+    case 0xC0000135u: return "program-dll";
+    default: return "program-failed";
+  }
+}
+
 Explained ExplainProgram(const QString& code) {
   if (code == "program-missing") {
     return {T("The game's program was not found beside this setup window."),
@@ -156,6 +164,18 @@ Explained ExplainProgram(const QString& code) {
             T("It stopped before it said anything, so nothing can be installed with it. The last lines it printed are "
               "below and in the details; a missing library means this download is damaged or incomplete. Download it "
               "again, and if it happens again report it with the details.")};
+  }
+  if (code == "program-entrypoint") {
+    return {T("The game's program could not be loaded: a system library is too old."),
+            T("Windows stopped it before it started, because a library it uses lacks a function it calls. That is "
+              "usually the graphics driver: Takedawn needs a Vulkan 1.3 graphics driver. Update the driver from "
+              "Intel, AMD or NVIDIA, then try again. If it happens again after that, report it with the details.")};
+  }
+  if (code == "program-dll") {
+    return {T("The game's program could not be loaded: a library is missing."),
+            T("Windows stopped it before it started, because a library it needs was not found beside it or in the "
+              "system. This download is damaged or incomplete: download it again, and if it happens again report it "
+              "with the details.")};
   }
   if (code == "program-killed") {
     return {T("The installation was stopped from outside."),

@@ -13,6 +13,10 @@
 #   SPEAKERS=stereo|5.1          (default stereo)
 #   MENU_SECS=60  RACE_SECS=60
 #   REC_TRIGGER=<file>           touched 10 s into the race (for RECOMP_MIX_TRACE_REC_START=@<file>)
+#   AT_START=1                   the soundtrack is started at launch (audio.custom_music_at_start,
+#                                BO-230) instead of being picked in the EA GAMES TRAX screen: the
+#                                music plays from the main menu (since BO-230 the screen's presses
+#                                below would switch an already playing soundtrack back to EA GAMES TRAX)
 #
 # As every scene: a scratch HOME, no settings file, the saves copied from
 # SAVES, headless. The WAV is <rundir>/out.wav; the phase times (seconds into
@@ -32,6 +36,10 @@ if [ "$MODE" = custom ]; then
     extra+=(RECOMP_AUDIO_MUSIC_DIR="$RD/music")
 fi
 [ -n "${LEVEL:-}" ] && extra+=(RECOMP_AUDIO_CUSTOM_LEVEL="$LEVEL")
+pick=1
+if [ "$MODE" = custom ] && [ "${AT_START:-0}" = 1 ]; then
+    extra+=(RECOMP_AUDIO_CUSTOM_AT_START=1); pick=0
+fi
 
 scene_start "$@" HOME="$HOME_DIR" RECOMP_SETTINGS=none RECOMP_AUDIO_WAV="$RD/out.wav" \
     RECOMP_AUDIO_LEVEL_LOG=1 RECOMP_AUDIO_SPEAKERS="${SPEAKERS:-stereo}" ${extra[@]+"${extra[@]}"}
@@ -45,7 +53,7 @@ mark() { echo "$1 $(aud)" >> "$RD/phases.txt"; }
 : > "$RD/phases.txt"
 
 to_main_menu
-if [ "$MODE" = custom ]; then
+if [ "$MODE" = custom ] && [ $pick = 1 ]; then
     # Driver Details > Settings > EA GAMES TRAX, X: the soundtrack list,
     # A: that soundtrack; random play off (Y toggles it in the screen).
     press down:200 20; press down:200 20; press down:200 20; press down:200 20
@@ -58,10 +66,11 @@ if [ "$MODE" = custom ]; then
     [ "$(songs)" -ge 1 ] || bad "the soundtrack's first song was not opened"
     press a:400 200
 fi
+[ $pick = 1 ] || { wait_flips 300; [ "$(songs)" -ge 1 ] || bad "no song of the soundtrack opened at start"; }
 mark menu_start
 t=$(date +%s); until [ $(( $(date +%s) - t )) -ge "${MENU_SECS:-60}" ]; do alive; sleep 1; done
 mark menu_end
-if [ "$MODE" = custom ]; then
+if [ "$MODE" = custom ] && [ $pick = 1 ]; then
     press b:300 90; press b:300 120            # Driver Details, the main menu
     press up:200 20; press up:200 20; press up:200 20
 else

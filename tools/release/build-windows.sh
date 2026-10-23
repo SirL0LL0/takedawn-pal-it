@@ -15,6 +15,7 @@
 #                         version resource. Takedawn.exe --install <image|folder>
 #   SDL2.dll              the pinned SDL2 (Zlib licence)
 #   licenses\             the notices, licence texts and SOURCE.txt
+#   shaders\upscale\      the texture upscaler's LGPL shader files (BO-245)
 #   README.txt
 #   takedawn-setup.exe    the setup window (Qt), which the game starts when
 #   Qt6*.dll, libc++.dll, its data is not installed; cross-built here against
@@ -72,7 +73,17 @@ rm -rf "$PKG"; mkdir -p "$PKG"
 cp "$B/bin/Takedawn.exe" "$PKG/"
 cp "$D/SDL2/x86_64-w64-mingw32/bin/SDL2.dll" "$PKG/"
 copy_licenses "$PKG/licenses"
+
+# The texture upscaler's LGPL shader files (BO-245): the game reads them at
+# runtime from <exe dir>\shaders\upscale, and with none there texture upscale
+# stays off. The same file set as the Linux package; the .metal copies are the
+# macOS build's.
+U="$PKG/shaders/upscale"; mkdir -p "$U"
+cp "$TOOLKIT/third_party/upscale_shaders/"*.comp "$TOOLKIT/third_party/upscale_shaders/VERSION" \
+   "$TOOLKIT/third_party/upscale_shaders/NOTICE.md" "$TOOLKIT/third_party/upscale_shaders/"COPYING* "$U/"
+cp -R "$TOOLKIT/third_party/upscale_shaders/upstream" "$U/"
 sed -e "s/@VERSION@/$VERSION/g" -e "s/@DISC@/$DISC_NAME/g" "$REPO/tools/release/windows/README.txt" | sed 's/$/\r/' > "$PKG/README.txt"
+
 HAVE_SETUP=no
 if [ "$WITH_SETUP" = 1 ]; then
     # The setup window, cross-built against the pinned qt.io kit for llvm-mingw

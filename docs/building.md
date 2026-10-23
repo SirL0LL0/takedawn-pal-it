@@ -44,7 +44,7 @@ built from:
 ```sh
 git clone https://github.com/xenophobentx/takedawn
 git clone -b takedawn https://github.com/xenophobentx/xboxrecomp
-git -C xboxrecomp checkout takedawn-0.2.0   # the toolkit of release 0.2.0
+git -C xboxrecomp checkout takedawn-0.1.2-beta   # the toolkit of release 0.1.2-beta
 ```
 
 The dashboard's language (`display.language`: Italian for the European disc)
