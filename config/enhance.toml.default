@@ -28,18 +28,12 @@ hdtv = "off"              # "480p": the game asks for progressive scan. It
                           # 640x480 device), so use "480p".
 aspect = "4:3"            # hor+ is not implemented; widescreen above is the
                           # game's own 16:9
-# The Xbox dashboard's language setting. The game reads it from the EEPROM
-# at start-up and picks the text (Data/GlobalXX.bin), the speech and the
-# films of that language.
-# Values: "english", "french", "german", "italian", "spanish", "japanese",
-#         "korean", "chinese_traditional", "chinese_simplified", "portuguese",
-#         "dutch", "swedish"
-# A language the disc does not carry falls back to the game's own default
-# (the PAL disc has no English, so "english" gives French there).
-# This build asks for Italian, the language of the European disc; on the
-# North America disc it is one of the languages that disc carries too.
-# Unset: the language the dashboard would have set (English).
-language = "italian"
+# The game's language is a setting of the overlay (Display > Game language,
+# display.language in settings.toml, RECOMP_XBOX_LANGUAGE), and so is the
+# interface's (Display > Interface language, interface.language,
+# RECOMP_UI_LANGUAGE): docs/language.md. The game starts in the build's own
+# language (Italian on the European disc) until one is chosen there; a
+# display.language here is not read.
 
 [present]
 filter = "nearest"        # "nearest" (stock), "linear", "integer"

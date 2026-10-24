@@ -208,14 +208,18 @@ def main():
         if f.endswith(".txt") and f != "THIRD_PARTY_NOTICES.md":
             shutil.copy2(os.path.join(lic_dir, f), os.path.join(pkg, "licenses", f))
 
-    # The read-me: Italian for the European disc. UTF-8 with a mark, so
-    # Notepad shows the accented letters.
+    # The read-me, in English; for the European disc its Italian translation
+    # beside it (LEGGIMI.txt). UTF-8 with a mark, so Notepad shows the
+    # accented letters.
     disc = "PAL (Europe)" if pal else "NTSC-U (North America)"
-    readme = os.path.join(root, "tools", "release", "windows",
-                          "README-pal-it.txt" if pal else "README.txt")
-    text = read_text(readme).replace("@VERSION@", version).replace("@DISC@", disc)
-    with open(os.path.join(pkg, "README.txt"), "wb") as f:
-        f.write(b"\xef\xbb\xbf" + text.replace("\n", "\r\n").encode("utf-8"))
+    readmes = [("README-pal.txt" if pal else "README.txt", "README.txt")]
+    if pal:
+        readmes.append(("README-pal-it.txt", "LEGGIMI.txt"))
+    for src, dst in readmes:
+        text = read_text(os.path.join(root, "tools", "release", "windows", src))
+        text = text.replace("@VERSION@", version).replace("@DISC@", disc)
+        with open(os.path.join(pkg, dst), "wb") as f:
+            f.write(b"\xef\xbb\xbf" + text.replace("\n", "\r\n").encode("utf-8"))
 
     # The zip.
     os.makedirs(out, exist_ok=True)

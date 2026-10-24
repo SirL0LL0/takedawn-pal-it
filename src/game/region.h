@@ -28,11 +28,15 @@
  * its own table, so the number the EEPROM carries has to be the one the
  * title's table knows. */
 #define BO3_LANGUAGE_ENCODING "pal"
+/* The game's language a start asks for when the player has chosen none and
+ * the disc has it (disclang.h): this build is the Italian one. */
+#define BO3_LANGUAGE_DEFAULT  "italian"
 #else
 #define BO3_VA(ntsc, pal)  (ntsc)
 #define BO3_SUB(ntsc, pal) ntsc
 #define BO3_REGION_NAME    "NTSC-U"
 #define BO3_LANGUAGE_ENCODING "ntsc"
+#define BO3_LANGUAGE_DEFAULT  "english"
 #endif
 
 #endif

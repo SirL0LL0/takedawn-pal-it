@@ -35,24 +35,27 @@
 > [legal notice](#legal-notice).
 
 > [!NOTE]
-> **This checkout: the European (PAL) disc, in Italian.** The upstream
-> Takedawn translates the North America (NTSC-U) disc. This one translates
-> the European (PAL) disc (`BO3_REGION=PAL`, [docs/pal.md](docs/pal.md)) and
-> plays it in Italian, the language that disc carries
-> ([docs/language.md](docs/language.md)). The game data is still yours: your
-> own European disc is what it reads.
+> **This checkout: the European (PAL) disc, with a choice of languages.**
+> The upstream Takedawn translates the North America (NTSC-U) disc. This one
+> translates the European (PAL) disc (`BO3_REGION=PAL`,
+> [docs/pal.md](docs/pal.md)). The game data is still yours: your own
+> European disc is what it reads.
 >
-> The language is the dashboard's setting, and it is a setting:
-> `english`, `french`, `german`, `italian`, `spanish`, `japanese`, `korean`,
-> `chinese_traditional`, `chinese_simplified`, `portuguese`, `dutch`,
-> `swedish`. The European disc carries French, German and Italian (and no
-> English: asking for it there falls back to the French one).
+> Two settings, on the first page of the settings overlay (Back and Start,
+> or F1), say the languages ([docs/language.md](docs/language.md)):
 >
-> The toolkit that answers the language setting is the `takedawn` branch of
-> [SirL0LL0/xboxrecomp](https://github.com/SirL0LL0/xboxrecomp), a fork of
-> [xenophobentx/xboxrecomp](https://github.com/xenophobentx/xboxrecomp) with
-> the language added on top of `takedawn-0.2.0` (the tag
-> `takedawn-0.2.0-it`).
+> - **Game language**: the Xbox dashboard's language, which the game reads at
+>   start-up to pick its text, its speech and its films. Only the languages
+>   on the disc in use are offered: French, German and Italian on the
+>   European disc. This build starts in Italian until another is chosen.
+> - **Interface language**: the words Takedawn itself shows (the settings
+>   overlay, the Mixer page, its messages): English (the default), French,
+>   German or Italian.
+>
+> The toolkit with the two settings and the translations is the `takedawn`
+> branch of [SirL0LL0/xboxrecomp](https://github.com/SirL0LL0/xboxrecomp), a
+> fork of [xenophobentx/xboxrecomp](https://github.com/xenophobentx/xboxrecomp)
+> (its `src/overlay/i18n/`: one table per language).
 >
 > To build it:
 >
@@ -1089,7 +1092,7 @@ Further documents:
 | Button prompt artwork | [assets/glyphs/README.md](assets/glyphs/README.md) |
 | How the parts fit together | [docs/architecture.md](docs/architecture.md) |
 | The PAL (Europe) build | [docs/pal.md](docs/pal.md) |
-| The dashboard's language (Italian on the European disc) | [docs/language.md](docs/language.md) |
+| The game's language and the interface's | [docs/language.md](docs/language.md) |
 
 Bug reports and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md)
 says what a useful report contains, what must never be committed and where

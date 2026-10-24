@@ -1,31 +1,62 @@
-# The dashboard's language
+# Languages
 
-The Xbox dashboard had a language setting, and the game reads it at start-up
-to pick its text, its speech and its films. Takedawn can answer it.
+Two languages are set apart:
 
-This checkout is the Italian one: the game's own text comes from the
-European disc in Italian, and the interface Takedawn draws over it (the
-settings overlay, the mixer's page, the installer's messages) is in Italian
-too.
+- the **game's language**: the Xbox dashboard's language setting, which the
+  game reads at start-up to pick its text, its speech and its films;
+- the **interface's language**: the words Takedawn itself shows, the
+  settings overlay, the Mixer page and Takedawn's own messages.
 
-## The setting
+Both are on the first page of the settings overlay (Back and Start, or F1:
+Display > Interface language, Display > Game language).
 
-`display.language` in `enhance.toml` (beside the program) names it:
+## The game's language
 
-```toml
-[display]
-language = "italian"
+`display.language` in `settings.toml` (the overlay writes it), or the
+environment variable `RECOMP_XBOX_LANGUAGE`. The names are the dashboard's:
+`english`, `french`, `german`, `italian`, `spanish`, `japanese`, `korean`,
+`chinese_traditional`, `chinese_simplified`, `portuguese`, `dutch`,
+`swedish`.
+
+The game reads it at start-up, so a change shows after a restart (the row
+says RESTART, and the foot of the page offers the restart).
+
+### Only the disc's languages
+
+The overlay offers only the languages the disc in use carries
+(`src/game/disclang.c`). A language is offered when its text,
+`Data/Global<xx>.bin`, is on the disc and the executable has a way to it:
+
+| file | language |
+|---|---|
+| `GlobalUs.bin`, `GlobalEn.bin` | English |
+| `GlobalFr.bin` | French |
+| `GlobalGe.bin` | German |
+| `GlobalIt.bin` | Italian |
+| `GlobalSp.bin` | Spanish |
+| `GlobalJa.bin` | Japanese |
+| `GlobalDu.bin` | Dutch |
+| `GlobalSw.bin` | Swedish |
+
+The European executable picks only German, Italian and, for every other
+number, French (`sub_00017470`, below): its disc carries `GlobalUs.bin` too,
+but the game never opens it. So the European disc offers French, German and
+Italian. The North American executable opens the files of the number it
+reads, so there the files decide.
+
+A start the player chose no language for asks for the build's own when the
+disc has it (`BO3_LANGUAGE_DEFAULT` in `src/game/region.h`: Italian for the
+European build, English for the North American one), else English, else the
+first the disc has. The log says what was found:
+
+```
+[LANG] the disc's languages: 0x00e (Burnout 3 Takedown/Data)
 ```
 
-The names are the dashboard's: `english`, `french`, `german`, `italian`,
-`spanish`, `japanese`, `korean`, `chinese_traditional`,
-`chinese_simplified`, `portuguese`, `dutch`, `swedish`. The setting is in the
-in-game overlay too (Back and Start, or F1: the Display page), and the
-environment variable `RECOMP_XBOX_LANGUAGE` overrides the file.
+(bit 0 English, 1 French, 2 German, 3 Italian, ... in the order of the list
+above).
 
-The game reads the setting at start-up, so a change shows after a restart.
-
-## The numbers, and why they differ
+### The numbers, and why they differ
 
 The console's EEPROM carries a number, not a name. The game reads the number
 and looks it up in its own table, so the number that means "Italian" is the
@@ -60,13 +91,6 @@ Without it the toolkit would answer 5 (Italian in the console's numbering)
 and the European game would look for Italian and find none, and fall back to
 its own default, French.
 
-## The European disc has no English
-
-The PAL disc carries French, German and Italian. `Data/GlobalUs.bin` and
-`Data/HeadUs.bin` are not on it. Asking for `english` on that disc makes the
-game fall back to its default, the French one, because the file it would
-open is not there.
-
 What the game loads for Italian, from the log:
 
 ```
@@ -76,44 +100,66 @@ What the game loads for Italian, from the log:
 [PATH] \Device\CdRom0\ovid\Titles30.xmv      the films
 ```
 
-## The interface
+### How the game finds the number
 
-The words Takedawn draws are in Italian in this checkout: the settings
-overlay (its pages, the rows and their descriptions, the choices, the notes
-under the rows, the footer's key hints), the mixer's page, the update
-check's messages, the shader pre-build's progress, the installer's help and
-errors, and the fatal messages the game shows when it cannot start.
+The PAL executable keeps its own table of languages at `0x3A7BC4` and reads
+it through `sub_00017470`, which opens `Data/GlobalGe.bin` and
+`Data/HeadGe.bin` for the number 3, `Data/GlobalIt.bin` and
+`Data/HeadIt.bin` for the number 6, and the French ones for every other
+number. The number itself is read from the EEPROM at the start-up
+(`sub_000208E1`, `sub_001B5F60`).
 
-The machine-readable parts stay in English: the keys in `settings.toml`
-(`nearest`, `linear`, `auto`, ...), the installer's line protocol
-(`PROTOCOL`, `STEP`, `LOG`, `RESULT`) and the log lines. Those are formats
-that a program parses, not words the player reads.
+## The interface's language
 
-The toolkit carries the interface's Italian in
-`src/overlay/overlay_ui.cpp`, `src/overlay/overlay_mixer.inc` and
-`src/overlay/xbox_update.c`; the title's own messages are in
-`src/game/install.c` and `src/game/main.c`.
+`interface.language` in `settings.toml`, or `RECOMP_UI_LANGUAGE`: `english`
+(the default), `french`, `german` or `italian`, the languages the overlay has
+words in. It changes at once, with the overlay open.
+
+The overlay is written in English, and every word a player reads goes
+through `TR()` (the toolkit's `src/overlay/xbox_i18n.h`). The translations
+are tables in the toolkit, one per language:
+
+```
+src/overlay/i18n/fr.inc
+src/overlay/i18n/de.inc
+src/overlay/i18n/it.inc
+```
+
+one `{ "English", "translation" },` pair a line. The English is the key; a
+text a table does not have shows in English. `tools/i18n_check.py` (in the
+toolkit) lists what each table lacks and checks that a translated format
+has the same `%` conversions as its English:
+
+```sh
+python3 ../xboxrecomp/tools/i18n_check.py --also src/game/main.c
+python3 ../xboxrecomp/tools/i18n_check.py --missing fr
+```
+
+The title's own messages that go through it are the fatal messages of a
+start that fails after the settings were read (`BO3_TR` in
+`src/game/main.c`). The installer's help and the messages of a start that
+fails before (the data missing, `src/game/install.c`) stay English: the
+settings are not read yet.
+
+The machine-readable parts stay in English in every language: the keys in
+`settings.toml` (`nearest`, `linear`, `auto`, ...), the installer's line
+protocol (`PROTOCOL`, `STEP`, `LOG`, `RESULT`) and the log lines.
+
+The overlay's fonts cover Latin-1, so the accents show, capitals included
+(the labels are drawn in capitals: `caps()` in `overlay_ui.cpp` raises the
+Latin-1 letters too).
 
 ## Where the code is
 
 | What | Where |
 |---|---|
 | the EEPROM's answer | toolkit `src/kernel/kernel_xbox.c` (`xbox_SetLanguage`, `xbox_GetLanguage`) |
-| the setting's name in the enhancements layer | toolkit `src/enhance/enhance_cfg.c` (`display.language`) |
-| the setting in the in-game overlay | toolkit `src/overlay/xbox_settings.c` (`XS_DISPLAY_LANGUAGE`) |
-| the game reads it and picks the files | `src/game/main.c` (`host_enhance_init`) |
-| the numbering the game uses | `src/game/region.h` (`BO3_LANGUAGE_ENCODING`) |
+| the two settings | toolkit `src/overlay/xbox_settings.c` (`XS_DISPLAY_LANGUAGE`, `XS_INTERFACE_LANGUAGE`, `xbox_SettingsSetLanguages`) |
+| the rows and the disc's choices | toolkit `src/overlay/overlay_ui.cpp` (`n_language`, `adjust`) |
+| the translations | toolkit `src/overlay/xbox_i18n.c`, `src/overlay/i18n/*.inc` |
+| the disc's languages, the default | `src/game/disclang.c`, `src/game/main.c` |
+| the numbering the game uses | `src/game/region.h` (`BO3_LANGUAGE_ENCODING`, `BO3_LANGUAGE_DEFAULT`) |
 
 The toolkit that carries this is the `takedawn` branch of
 [SirL0LL0/xboxrecomp](https://github.com/SirL0LL0/xboxrecomp), a fork of
-[xenophobentx/xboxrecomp](https://github.com/xenophobentx/xboxrecomp) with
-the language added on top of `takedawn-0.2.0` (the tag
-`takedawn-0.2.0-it`).
-
-## How the game finds the number
-
-The PAL executable keeps its own table of languages at `0x3A7BC4` and reads
-it through `sub_00017470`, which opens `Data/GlobalIt.bin` and
-`Data/HeadIt.bin` for the number 6 and the French ones for every other
-number. The number itself is read from the EEPROM at the start-up
-(`sub_000208E1`, `sub_001B5F60`).
+[xenophobentx/xboxrecomp](https://github.com/xenophobentx/xboxrecomp).

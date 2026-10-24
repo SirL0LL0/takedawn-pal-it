@@ -72,6 +72,7 @@ extern void xbox_InputPanicStop(int wait_ms);
 #include "apu.h"                       /* mcpx_apu_set_voice_tag_hook */
 #include "usb/ohci.h"
 #include "region.h"                   /* BO3_VA: NTSC-U or PAL addresses */
+#include "disclang.h"                 /* the languages the disc in use carries */
 #include "region_map.h"               /* the addresses the upstream's new code names */
 #include "controls.h"                 /* input.control_scheme (BO-106) */
 #include "install.h"                  /* the data root, --install, --version (BO-103) */
@@ -97,6 +98,10 @@ extern void xbox_InputPanicStop(int wait_ms);
 #endif
 #ifdef XBOXRECOMP_HAVE_OVERLAY         /* the toolkit's in-game settings overlay */
 #include "xbox_settings.h"
+#include "xbox_i18n.h"               /* the player's words in the interface's language */
+#define BO3_TR(s) xbox_tr(s)
+#else
+#define BO3_TR(s) (s)
 #endif
 #ifdef RECOMP_ENV_HAVE_ENHANCE_KEYS   /* the toolkit's opt-in enhancements layer */
 #include "enhance.h"
@@ -1846,20 +1851,22 @@ static void host_fatal(const char *what, const char *todo)
 {
 #if defined(__ANDROID__)
 #if defined(BO3_REGION_PAL) && BO3_REGION_PAL
-    const char *log = "takedawn.log in the app's files folder"
-                      " (Android/data/io.github.xenophobentx.takedawn.pal/files)";
+    const char *log = BO3_TR("takedawn.log in the app's files folder"
+                      " (Android/data/io.github.xenophobentx.takedawn.pal/files)");
 #else
-    const char *log = "takedawn.log in the app's files folder"
-                      " (Android/data/io.github.xenophobentx.takedawn/files)";
+    const char *log = BO3_TR("takedawn.log in the app's files folder"
+                      " (Android/data/io.github.xenophobentx.takedawn/files)");
 #endif
 #else
     char log[1200];
 
-    snprintf(log, sizeof log, "run.log in the logs folder of the save folder (%s/logs)",
+    snprintf(log, sizeof log, BO3_TR("run.log in the logs folder of the save folder (%s/logs)"),
              s_save_dir);
 #endif
-    bo3_fatal(BO3_APP_NAME " cannot start", "%s\n\n%s\n\nThe log of this run is %s.", what, todo,
-              log);
+    /* The words in the interface's language (xbox_i18n.h): a start that
+     * fails after the settings were read says them in the player's. */
+    bo3_fatal(BO3_TR(BO3_APP_NAME " cannot start"), BO3_TR("%s\n\n%s\n\nThe log of this run is %s."),
+              BO3_TR(what), BO3_TR(todo), log);
 }
 
 /* The boot sequence, the same on every host. On Windows it runs on the
@@ -1938,10 +1945,10 @@ static int host_main(void)
     if (!load_xbe(s_xbe_path, &xbe_data, &xbe_size)) {
         char what[1200];
 
-        snprintf(what, sizeof what, "The game's program file could not be read:\n%s", s_xbe_path);
-        host_fatal(what, "I dati del gioco mancano o sono danneggiati. Installali di nuovo dal tuo"
-                         " disco di Burnout 3: Takedown (il programma di installazione, o --install), e"
-                         " controlla che la cartella si possa leggere.");
+        snprintf(what, sizeof what, BO3_TR("The game's program file could not be read:\n%s"), s_xbe_path);
+        host_fatal(what, "The game's data is missing or damaged. Install it again from your own"
+                         " Burnout 3: Takedown disc (the setup program, or --install), and"
+                         " check that the folder can be read.");
         return 1;
     }
     printf("XBE loaded: %zu bytes\n", xbe_size);
@@ -1951,11 +1958,11 @@ static int host_main(void)
         XR_ERROR( "Xbox memory layout init failed "
                         "(required VA range unavailable?)\n");
         free(xbe_data);
-        host_fatal("La memoria di cui il gioco ha bisogno non ha potuto essere riservata. Gira come una copia della"
-                   " Xbox e ha bisogno di un intervallo fisso di spazio di indirizzamento tutto suo.",
-                   "Chiudi gli altri programmi e l'eventuale altra copia del gioco, e riavvialo."
-                   " Riavviare il computer di solito libera l'intervallo. Se continua a succedere,"
-                   " manda il log con un report di bug.");
+        host_fatal("The memory the game needs could not be reserved. It runs as a copy of the"
+                   " Xbox and needs a fixed range of address space to itself.",
+                   "Close other programs, and any other copy of the game, and start it again."
+                   " Restarting the computer usually frees the range. If it keeps happening,"
+                   " send the log with a bug report.");
         return 1;
     }
     g_xbox_mem_offset = xbox_GetMemoryOffset();
@@ -3815,6 +3822,27 @@ int main(int argc, char **argv)
     if (headless)
         env_default("RECOMP_HEADLESS", "1");
 #endif
+    /* The game's language: the disc's (disclang.h). The overlay offers only
+     * those, and a start the player chose none for asks for the build's
+     * own (region.h) when the disc has it, else English, else the first the
+     * disc has. */
+    {
+        char data[1100];
+        const char *a = strrchr(s_xbe_path, '/'), *b = strrchr(s_xbe_path, '\\');
+        const char *cut = a > b ? a : b;
+        unsigned langs;
+        if (cut)
+            snprintf(data, sizeof data, "%.*s/Data", (int)(cut - s_xbe_path), s_xbe_path);
+        else
+            snprintf(data, sizeof data, "Data");
+        langs = bo3_disc_languages(data);
+#ifdef XBOXRECOMP_HAVE_OVERLAY
+        xbox_SettingsSetLanguages(langs);
+#endif
+        env_default("RECOMP_XBOX_LANGUAGE", bo3_disc_language_default(langs, BO3_LANGUAGE_DEFAULT));
+        if (!bug_report)
+            XR_NOTICE("[LANG] the disc's languages: 0x%03x (%s)\n", langs, data);
+    }
 #ifdef XBOXRECOMP_HAVE_OVERLAY
     xbox_SettingsFinish();              /* the last default is in */
 #endif

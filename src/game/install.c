@@ -417,7 +417,7 @@ static int location_save(const char *dest, char *saved, unsigned saved_n, char *
 
     absolute_path(dest, saved, saved_n);
     if (!location_file(file, sizeof file)) {
-        snprintf(why, why_n, "Non c'e' una cartella per utente dove tenere la scelta.");
+        snprintf(why, why_n, "There is no per-user folder to keep the choice in.");
         return 0;
     }
     default_root(def, sizeof def);
@@ -600,7 +600,7 @@ int bo3_steam_art_run(char *line, unsigned n)
     if (pid < 0) {
         close(out[0]);
         close(out[1]);
-        snprintf(line, n, "Impossibile avviare il programma di installazione.");
+        snprintf(line, n, "Could not start the setup program.");
         return 0;
     }
     if (pid == 0) {
@@ -637,7 +637,7 @@ int bo3_steam_art_run(char *line, unsigned n)
 
         snprintf(line, n, "%s", nl ? nl + 1 : buf);
     } else {
-        snprintf(line, n, "Il programma di installazione non ha risposto.");
+        snprintf(line, n, "The setup program did not answer.");
     }
     return WIFEXITED(status) && WEXITSTATUS(status) == 0;
 }
@@ -684,7 +684,7 @@ static int setup_needed(const char *code, const char *why, const char *source, c
     if (!(flags & BO3_DATA_NO_SETUP))
         bo3_fatal_box(BO3_APP_NAME " cannot start",
                       "%s\n\nThe game's data comes from your own Burnout 3: Takedown disc. "
-                      "Installalo con il programma di installazione che viene con %s (takedawn-setup), "
+                      "Install it with the setup program that comes with %s (takedawn-setup), "
                       "or from a terminal:\n\n  %s --install %s",
                       why, BO3_APP_NAME,
                       own_command(), source);
@@ -730,21 +730,21 @@ static int data_state(const char *data_arg, char *root, unsigned root_n, int *na
          * by hand): the install checks them where they lie. */
         *code = "unverified";
         snprintf(source, source_n, "\"%s/" GAME_DIR "\" --dest \"%s\"", root, root);
-        snprintf(why, why_n, "Ci sono file del gioco in %s, ma questo programma non li ha controllati. "
+        snprintf(why, why_n, "There are game files in %s, but this program has not checked "
                  "them. Installing from that folder checks them in place; nothing is copied.",
                  root);
     } else if (!xr_install_marker_read(root, mark) && *named == 2 && !dir_exists(root)) {
-        snprintf(why, why_n, "La cartella scelta per i dati del gioco, %s, non c'e'. Se e' "
+        snprintf(why, why_n, "The folder chosen for the game's data, %s, is not there. If it is "
                  "on a drive that is not connected, connect it and start %s again, or choose "
                  "another folder in the setup window.", root, BO3_APP_NAME);
     } else if (!xr_install_marker_read(root, mark)) {
-        snprintf(why, why_n, "I dati del gioco non sono installati in %s.", root);
+        snprintf(why, why_n, "The game's data is not installed in %s.", root);
     } else if (strcmp(mark->manifest, BO3_MANIFEST_ID)) {
-        snprintf(why, why_n, "I dati in %s sono stati installati per un'altra build del gioco "
+        snprintf(why, why_n, "The data in %s was installed for another build of the game "
                  "(manifest %s; this program needs %s). Install it again.", root, mark->manifest,
                  BO3_MANIFEST_ID);
     } else if (!file_exists(there)) {
-        snprintf(why, why_n, "I dati del gioco in %s non sono leggibili, o il suo default.xbe "
+        snprintf(why, why_n, "The game's data in %s is not readable, or its default.xbe "
                  "is gone. Install it again.", root);
     } else {
         return DATA_OK;
@@ -762,7 +762,7 @@ int bo3_data_enter(const char *data_arg, int xbe_named, int flags)
 
     /* The folders of the port's earlier name are moved by a start that has
      * a title to run, and only by that (and a real --install): a start
-     * that ends in the setup window or in "non installato", and the bug
+     * that ends in the setup window or in "not installed", and the bug
      * report, leave them where they are. */
     if (xbe_named) {
         if (move)
@@ -782,14 +782,14 @@ int bo3_data_enter(const char *data_arg, int xbe_named, int flags)
         return 0;
     case DATA_OK:
         if (bo3_chdir(root) != 0) {
-            snprintf(why, sizeof why, "I dati del gioco in %s non sono leggibili. Installali di nuovo.",
+            snprintf(why, sizeof why, "The game's data in %s is not readable. Install it again.",
                      root);
             break;
         }
         if (!quiet)
             XR_NOTICE( "[DATA] root: %s (%s; installed by %s, manifest %s)\n", root,
-                    named == 1 ? "con nome" : named == 2 ? "la cartella scelta, " LOCATION_FILE
-                    : "la cartella per utente", mark.version, mark.manifest);
+                    named == 1 ? "named" : named == 2 ? "the chosen folder, " LOCATION_FILE
+                    : "the per-user folder", mark.version, mark.manifest);
         return 0;
     default:
         break;
@@ -819,7 +819,7 @@ int bo3_data_status_main(int argc, char **argv)
            "LOG data bytes %llu\n"
            "LOG data free-needed %llu\n"
            "LOG data version %s\n",
-           root, state == DATA_CHECKOUT ? "checkout" : named == 1 ? "con nome"
+           root, state == DATA_CHECKOUT ? "checkout" : named == 1 ? "named"
                  : named == 2 ? "saved" : "default", def,
            k_manifest.title, k_manifest.build, k_manifest.count,
            (unsigned long long)xr_manifest_bytes(&k_manifest), (unsigned long long)FREE_NEEDED,
@@ -940,22 +940,22 @@ static void install_log(void *ctx, const char *text)
 static int install_usage(void)
 {
     XR_ERROR(
-        "uso: burnout3 --install <immagine-o-cartella> [--dest <cartella>] [--check]\n"
-        "  Mette in posto i dati del gioco dal tuo disco: un'immagine del disco Xbox (.iso: un\n"
-        "  xiso, o un redump con la partizione video) o una cartella estratta da uno.\n"
-        "  Si accetta solo %s, %s; ogni file viene\n"
-        "  controllato con il manifest del disco (%u file, %.2f GB).\n"
-        "  --dest <cartella>  dove metterli (default: TAKEDAWN_DATA, altrimenti la cartella scelta\n"
-        "                 prima, altrimenti la cartella per utente)\n"
-        "  --remember     il gioco usa <cartella> da ora in poi, senza --data: scritto in\n"
-        "                 " LOCATION_FILE " nella cartella per utente (la cartella predefinita\n"
-        "                 lo cancella)\n"
-        "  --check        dice solo che disco e'; non scrive nulla\n"
-        "  stdout e' il protocollo di righe dell'installer:\n"
+        "usage: burnout3 --install <image-or-folder> [--dest <dir>] [--check]\n"
+        "  Puts the game's data in place from your own disc: an Xbox disc image (.iso: an\n"
+        "  xiso, or a redump with the video partition) or a folder extracted from one.\n"
+        "  Only %s, %s is accepted; every file is\n"
+        "  checked against the disc's manifest (%u files, %.2f GB).\n"
+        "  --dest <dir>   where to (default: TAKEDAWN_DATA, else the folder chosen\n"
+        "                 before, else the per-user folder)\n"
+        "  --remember     the game uses <dir> from now on, with no --data: written to\n"
+        "                 " LOCATION_FILE " in the per-user folder (the default folder\n"
+        "                 removes it)\n"
+        "  --check        only say what the disc is; nothing is written\n"
+        "  stdout is the installer's line protocol:\n"
         "    PROTOCOL 1 / PLAN disc / STEP disc BEGIN|OK|SKIP|FAIL ... /\n"
         "    PROGRESS disc <0..1> <file> / LOG disc <text> / RESULT OK|FAIL ...\n"
-        "  Puoi fermarlo quando vuoi (o crea <dest>/install.cancel): la prossima esecuzione riprende\n"
-        "  da dove si era fermato.\n",
+        "  Stop it at any time (or create <dest>/install.cancel): the next run goes on\n"
+        "  where it stopped.\n",
         k_manifest.title, k_manifest.build, k_manifest.count,
         (double)xr_manifest_bytes(&k_manifest) / 1e9);
     return 2;

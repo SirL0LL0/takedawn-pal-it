@@ -10,7 +10,8 @@ Takedawn translates one exact `default.xbe`. Besides the North America
 
 Both have the title id `0x4541005B`, so a profile moves between them as it
 does between machines (copy `UDATA`). The PAL disc carries the French,
-German and Italian text, speech and films beside the English. Its own
+German and Italian text, speech and films beside the English (which its
+executable never opens: [language.md](language.md)). Its own
 directory table spells the tracks folder `tracks/` (the NTSC-U disc has
 `Tracks/`); the manifest was made from a PAL image with
 `tools/release/make_manifest.py` and keeps that spelling. Guest paths are
@@ -23,11 +24,12 @@ EEPROM's region North America and an NTSC-M, 60 Hz AV pack
 (`src/kernel/kernel_hal.c`). So the PAL game runs its 60 Hz path.
 
 The language is the dashboard's setting, and it is not fixed to English
-anymore: `display.language` names it and the EEPROM carries the number the
-game's own table knows, so the European disc can be played in Italian
-([language.md](language.md)). The European disc carries French, German and
-Italian, and no English: asking for `english` on it falls back to the French
-one, because the file the game would open is not there.
+anymore: the overlay's Game language (`display.language`) names it and the
+EEPROM carries the number the game's own table knows
+([language.md](language.md)). The European executable picks French, German
+or Italian only (its English files are on the disc, unread), so those three
+are what the overlay offers for it; this build starts in Italian until one is
+chosen.
 
 Reporting a PAL standard (50 Hz, PAL video) is still the toolkit's to add.
 
